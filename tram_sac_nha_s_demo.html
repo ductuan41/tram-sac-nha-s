@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trạm sạc nhà S — Demo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f6f7fb;color:#172033}
+header{background:#fff;border-bottom:1px solid #e8eaf0;position:sticky;top:0;z-index:10}
+.nav{max-width:1120px;margin:auto;padding:15px 22px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.logo{font-size:20px;font-weight:850}.logo span{color:#5b5bd6}
+nav{display:flex;flex-wrap:wrap;justify-content:flex-end}nav button{border:0;background:none;padding:9px 11px;cursor:pointer;color:#596174;font-weight:650}nav button.active{color:#5b5bd6}
+main{max-width:1120px;margin:auto;padding:35px 22px}
+.hero{background:linear-gradient(135deg,#ececff,#fff);border:1px solid #e1e2f7;border-radius:25px;padding:45px;margin-bottom:30px}
+.hero h1{font-size:43px;line-height:1.08;margin:0 0 15px}.hero p{max-width:690px;color:#5e6678;line-height:1.65;font-size:17px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.btn{border:0;border-radius:11px;padding:12px 17px;font-weight:750;cursor:pointer}.primary{background:#5b5bd6;color:#fff}.secondary{background:#fff;border:1px solid #dfe2ea;color:#30384b}
+.hidden{display:none}.section-title{display:flex;justify-content:space-between;align-items:center;margin:25px 0 15px}.muted{color:#747d90;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:#fff;border:1px solid #e5e8ee;border-radius:18px;overflow:hidden;box-shadow:0 5px 18px rgba(20,25,40,.04)}
+.pic{height:145px;background:#f0f1f6;display:flex;align-items:center;justify-content:center;font-size:50px}.card-body{padding:17px}.tag{display:inline-block;background:#f0f1ff;color:#5555bd;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.card h3{font-size:18px;margin:10px 0 7px}.status{font-weight:800;font-size:13px;margin:13px 0}.available{color:#16864b}.held{color:#ae7600}.done{color:#b02b3a}.card .btn{width:100%}
+.panel{background:#fff;border:1px solid #e4e7ec;border-radius:18px;padding:24px;margin-top:20px}.form{max-width:720px}.field{margin:15px 0}.field label{display:block;font-weight:700;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #d8dce5;border-radius:10px;font:inherit}.field textarea{min-height:100px}
+.notice{background:#fff8df;border:1px solid #f1dfa0;border-radius:11px;padding:13px;color:#705a17;margin:16px 0}.search{width:100%;padding:13px;border:1px solid #d8dce5;border-radius:10px;font:inherit}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat{background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:18px}.stat b{display:block;font-size:28px;margin-top:5px}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;background:#fff}.table th,.table td{padding:13px;text-align:left;border-bottom:1px solid #edf0f4;font-size:14px}.table th{color:#667085;background:#fafbfc}
+footer{max-width:1120px;margin:45px auto;padding:25px 22px;color:#858d9f;font-size:13px}
+@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.hero h1{font-size:34px}}
+@media(max-width:540px){.grid{grid-template-columns:1fr}.nav{align-items:flex-start}.hero{padding:29px}.hero h1{font-size:30px}}
+</style>
+</head>
+<body>
+<header><div class="nav">
+<div class="logo">Trạm sạc <span>nhà S</span></div>
+<nav>
+<button class="active" onclick="showPage('home',this)">Trang chủ</button>
+<button onclick="showPage('items',this)">Tìm đồ</button>
+<button onclick="showPage('give',this)">Cho đồ</button>
+<button onclick="showPage('receive',this)">Nhận đồ</button>
+<button onclick="showPage('admin',this)">BTC</button>
+</nav>
+</div></header>
+
+<main>
+<section id="home">
+<div class="hero">
+<h1>Đồ bạn không cần,<br>người khác đang cần.</h1>
+<p>Trạm sạc nhà S là mô hình chia sẻ đồ dùng dành cho sinh viên: trao lại những món đồ còn sử dụng tốt và tìm những thứ bạn đang cần — đơn giản, minh bạch và không công khai thông tin cá nhân.</p>
+<div class="actions"><button class="btn primary" onclick="showPage('items')">📦 Tìm đồ</button><button class="btn secondary" onclick="showPage('give')">🎁 Tôi muốn cho đồ</button></div>
+</div>
+<div class="section-title"><h2>Đồ đang có</h2><button class="btn secondary" onclick="showPage('items')">Xem tất cả →</button></div>
+<div class="grid" id="homeGrid"></div>
+</section>
+
+<section id="items" class="hidden">
+<div class="section-title"><div><h2>📦 Tìm đồ</h2><div class="muted">Chỉ hiển thị vật phẩm; không hiển thị người cho/người nhận.</div></div></div>
+<div class="panel"><input class="search" id="search" oninput="renderItems()" placeholder="🔎 Tìm theo tên, mã hoặc nhóm..."></div>
+<div class="grid" id="itemsGrid" style="margin-top:20px"></div>
+</section>
+
+<section id="give" class="hidden">
+<div class="panel form">
+<h2>🎁 Trao đi một món đồ</h2><p class="muted">Thông tin người gửi chỉ dành cho BTC.</p>
+<div class="field"><label>Họ và tên</label><input id="gName" placeholder="Nguyễn Văn A"></div>
+<div class="field"><label>MSSV</label><input placeholder="24000000"></div>
+<div class="field"><label>Email</label><input type="email" placeholder="email@vnu.edu.vn"></div>
+<div class="field"><label>Tên vật phẩm</label><input placeholder="Ví dụ: Giáo trình Marketing căn bản"></div>
+<div class="field"><label>Nhóm vật phẩm</label><select><option>Sách / Giáo trình</option><option>Dụng cụ học tập</option><option>Đồ dùng sinh hoạt</option><option>Balo / Túi</option><option>Công nghệ</option><option>Khác</option></select></div>
+<div class="field"><label>Tình trạng</label><select><option>Mới</option><option>Rất tốt</option><option>Tốt</option><option>Đã qua sử dụng nhưng còn tốt</option></select></div>
+<div class="field"><label>Mô tả</label><textarea placeholder="Mô tả ngắn về tình trạng vật phẩm..."></textarea></div>
+<div class="notice">ℹ️ Đây là demo giao diện. Bản thật có thể lưu dữ liệu vào Supabase/Google Sheets và gửi email tự động.</div>
+<button class="btn primary" onclick="alert('Demo: BTC đã nhận đăng ký của bạn!')">Gửi đăng ký cho đồ</button>
+</div>
+</section>
+
+<section id="receive" class="hidden">
+<div class="panel form">
+<h2>🎁 Tìm một món đồ</h2><p class="muted">Chọn món còn hàng rồi đăng ký nhận.</p>
+<div class="field"><label>Mã vật phẩm</label><input id="receiveCode" placeholder="TS0001"></div>
+<div class="field"><label>Họ và tên</label><input placeholder="Nguyễn Văn B"></div>
+<div class="field"><label>MSSV</label><input placeholder="24000001"></div>
+<div class="field"><label>Email</label><input type="email" placeholder="email@vnu.edu.vn"></div>
+<div class="field"><label>Ngày nhận mong muốn</label><input type="date"></div>
+<div class="notice">🟡 Đăng ký chưa có nghĩa là chắc chắn được nhận. BTC sẽ xác nhận và chuyển trạng thái sang “ĐANG GIỮ”.</div>
+<button class="btn primary" onclick="receiveItem()">Đăng ký nhận</button>
+</div>
+</section>
+
+<section id="admin" class="hidden">
+<div class="section-title"><div><h2>⚙️ Dashboard BTC</h2><div class="muted">Demo trang quản trị — bản thật sẽ có phân quyền.</div></div></div>
+<div class="stats"><div class="stat">Tổng vật phẩm<b id="total">0</b></div><div class="stat">🟢 Còn<b id="available">0</b></div><div class="stat">🟡 Đang giữ<b id="held">0</b></div><div class="stat">🔴 Đã trao<b id="done">0</b></div></div>
+<div class="panel"><h3>Kho vật phẩm</h3><div class="tablewrap"><table class="table"><thead><tr><th>Mã</th><th>Vật phẩm</th><th>Nhóm</th><th>Tình trạng</th><th>Trạng thái</th><th></th></tr></thead><tbody id="adminTable"></tbody></table></div></div>
+</section>
+</main>
+<footer>Trạm sạc nhà S — Demo MVP. Có thể phát triển tiếp thành website thật với database, đăng nhập sinh viên, QR vật phẩm, email tự động và phân quyền BTC.</footer>
+
+<script>
+const data=[
+{code:'TS0001',name:'Giáo trình Marketing căn bản',cat:'Sách / Giáo trình',condition:'Tốt',status:'CÒN',icon:'📚'},
+{code:'TS0002',name:'Balo sinh viên',cat:'Balo / Túi',condition:'Rất tốt',status:'ĐANG GIỮ',icon:'🎒'},
+{code:'TS0003',name:'Máy tính Casio',cat:'Dụng cụ học tập',condition:'Tốt',status:'CÒN',icon:'🧮'},
+{code:'TS0004',name:'Bộ bút highlight',cat:'Dụng cụ học tập',condition:'Mới',status:'CÒN',icon:'🖍️'},
+{code:'TS0005',name:'Đèn bàn học',cat:'Đồ dùng sinh hoạt',condition:'Tốt',status:'ĐÃ TRAO',icon:'💡'},
+{code:'TS0006',name:'Tai nghe có dây',cat:'Công nghệ',condition:'Tốt',status:'CÒN',icon:'🎧'}
+];
+function card(x){
+let cls=x.status==='CÒN'?'available':x.status==='ĐANG GIỮ'?'held':'done';
+let st=x.status==='CÒN'?'🟢 CÒN':x.status==='ĐANG GIỮ'?'🟡 ĐANG CÓ NGƯỜI GIỮ':'🔴 ĐÃ TRAO';
+return `<div class="card"><div class="pic">${x.icon}</div><div class="card-body"><span class="tag">${x.cat}</span><h3>${x.name}</h3><div class="muted">${x.code} · Tình trạng: ${x.condition}</div><div class="status ${cls}">${st}</div>${x.status==='CÒN'?`<button class="btn primary" onclick="openReceive('${x.code}')">Đăng ký nhận</button>`:''}</div></div>`;
+}
+function renderItems(){let q=(document.getElementById('search')?.value||'').toLowerCase();document.getElementById('itemsGrid').innerHTML=data.filter(x=>(x.name+x.cat+x.code).toLowerCase().includes(q)).map(card).join('')}
+function renderHome(){document.getElementById('homeGrid').innerHTML=data.filter(x=>x.status!=='ĐÃ TRAO').slice(0,3).map(card).join('')}
+function renderAdmin(){
+let c={total:data.length,available:data.filter(x=>x.status==='CÒN').length,held:data.filter(x=>x.status==='ĐANG GIỮ').length,done:data.filter(x=>x.status==='ĐÃ TRAO').length};
+document.getElementById('total').textContent=c.total;document.getElementById('available').textContent=c.available;document.getElementById('held').textContent=c.held;document.getElementById('done').textContent=c.done;
+document.getElementById('adminTable').innerHTML=data.map(x=>`<tr><td><b>${x.code}</b></td><td>${x.name}</td><td>${x.cat}</td><td>${x.condition}</td><td>${x.status}</td><td>${x.status==='CÒN'?`<button class="btn secondary" onclick="hold('${x.code}')">Giữ đồ</button>`:''}</td></tr>`).join('');
+}
+function showPage(id,btn){
+document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');
+document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');
+if(id==='items')renderItems();if(id==='admin')renderAdmin();window.scrollTo({top:0,behavior:'smooth'});
+}
+function openReceive(code){document.getElementById('receiveCode').value=code;showPage('receive')}
+function receiveItem(){let code=document.getElementById('receiveCode').value.trim().toUpperCase();let x=data.find(i=>i.code===code);if(!x)return alert('Không tìm thấy mã vật phẩm.');if(x.status!=='CÒN')return alert('Vật phẩm này hiện không còn sẵn.');x.status='ĐANG GIỮ';renderHome();renderItems();renderAdmin();alert('Demo: đăng ký thành công! BTC sẽ xác nhận lịch nhận.')}
+function hold(code){let x=data.find(i=>i.code===code);if(x){x.status='ĐANG GIỮ';renderHome();renderItems();renderAdmin()}}
+renderHome();renderItems();renderAdmin();
+</script>
+</body>
+</html>
