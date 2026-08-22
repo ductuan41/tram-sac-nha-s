@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans:
+    Arial,
+    Helvetica,
+    "Segoe UI",
+    Tahoma,
+    sans-serif;
+
+  --font-mono:
+    Consolas,
+    "Courier New",
+    monospace;
+}
+
+/* =========================================================
+   FONT TIẾNG VIỆT
+   ========================================================= */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #171717;
+
+  font-family:
+    Arial,
+    Helvetica,
+    "Segoe UI",
+    Tahoma,
+    sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+/* =========================================================
+   ĐẢM BẢO CHỮ TIẾNG VIỆT KHÔNG BỊ NHẠT / MỜ
+   ========================================================= */
+
+input::placeholder,
+textarea::placeholder {
+  font-family: inherit;
+  color: #94a3b8;
+  opacity: 1;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
