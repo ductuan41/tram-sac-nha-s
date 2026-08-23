@@ -56,6 +56,12 @@ export default function KhoPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [formError, setFormError] = useState("");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "available" | "out">("all");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [sortOption, setSortOption] = useState<"newest" | "name-asc" | "remaining-desc">("newest");
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -344,6 +350,56 @@ export default function KhoPage() {
     return remaining > 0 && hasActivePickupSlot;
   }
 
+  const locationOptions = Array.from(
+    new Set(
+      pickupSlots
+        .filter((slot) => slot.is_active)
+        .map((slot) => slot.pickup_location.trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, "vi"));
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredItems = items
+    .filter((item) => {
+      if (!normalizedSearch) return true;
+      return [
+        item.name,
+        item.item_code,
+        item.category,
+        item.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch);
+    })
+    .filter((item) => {
+      const remaining = getRemainingQuantity(item);
+      if (onlyAvailable && !isItemAvailable(item)) return false;
+      if (stockFilter === "available" && remaining <= 0) return false;
+      if (stockFilter === "out" && remaining > 0) return false;
+      return true;
+    })
+    .filter((item) => {
+      if (locationFilter === "all") return true;
+      return getItemSlots(item.id).some(
+        (slot) => slot.pickup_location === locationFilter
+      );
+    })
+    .sort((a, b) => {
+      if (sortOption === "name-asc") {
+        return a.name.localeCompare(b.name, "vi");
+      }
+      if (sortOption === "remaining-desc") {
+        return getRemainingQuantity(b) - getRemainingQuantity(a);
+      }
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-7xl px-6 py-12">
@@ -373,6 +429,97 @@ export default function KhoPage() {
           </div>
         )}
 
+        {!loading && items.length > 0 && (
+          <section className="mb-8 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-6">
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl">
+                  🔎
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm theo tên, mã sản phẩm, danh mục..."
+                  className="w-full rounded-2xl border border-slate-300 bg-white py-4 pl-12 pr-4 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <select
+                  value={stockFilter}
+                  onChange={(e) => setStockFilter(e.target.value as "all" | "available" | "out")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                >
+                  <option value="all">Tất cả sản phẩm</option>
+                  <option value="available">Còn hàng</option>
+                  <option value="out">Hết hàng</option>
+                </select>
+
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                >
+                  <option value="all">Tất cả địa điểm</option>
+                  {locationOptions.map((location) => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={sortOption}
+                  onChange={(e) =>
+                    setSortOption(
+                      e.target.value as "newest" | "name-asc" | "remaining-desc"
+                    )
+                  }
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                >
+                  <option value="newest">Mới cập nhật</option>
+                  <option value="name-asc">Tên A → Z</option>
+                  <option value="remaining-desc">Còn nhiều hàng trước</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="inline-flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={onlyAvailable}
+                    onChange={(e) => setOnlyAvailable(e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-300"
+                  />
+                  Chỉ hiện sản phẩm có thể lấy ngay
+                </label>
+
+                <p className="text-sm text-slate-500">
+                  Hiển thị <b>{filteredItems.length}</b> / {items.length} sản phẩm
+                </p>
+              </div>
+
+              {(searchQuery || stockFilter !== "all" || locationFilter !== "all" ||
+                sortOption !== "newest" || onlyAvailable) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStockFilter("all");
+                    setLocationFilter("all");
+                    setSortOption("newest");
+                    setOnlyAvailable(false);
+                  }}
+                  className="self-start rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Xóa bộ lọc
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {loading ? (
           <div className="rounded-3xl bg-white p-16 text-center shadow-sm">
             <p className="text-lg text-slate-500">
@@ -389,9 +536,32 @@ export default function KhoPage() {
               BTC sẽ cập nhật đồ mới tại đây.
             </p>
           </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-3xl bg-white p-12 text-center shadow-sm ring-1 ring-slate-200">
+            <div className="text-4xl">🔎</div>
+            <h2 className="mt-4 text-2xl font-bold text-slate-900">
+              Không tìm thấy sản phẩm
+            </h2>
+            <p className="mt-3 text-slate-500">
+              Thử đổi từ khóa hoặc xóa bớt bộ lọc để xem thêm sản phẩm.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setStockFilter("all");
+                setLocationFilter("all");
+                setSortOption("newest");
+                setOnlyAvailable(false);
+              }}
+              className="mt-6 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => {
+            {filteredItems.map((item) => {
               const remaining = getRemainingQuantity(item);
               const available = isItemAvailable(item);
 
