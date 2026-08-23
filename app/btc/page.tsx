@@ -415,29 +415,82 @@ export default function BtcPage() {
   // Supabase Realtime sẽ báo sự kiện để trang tự tải lại dữ liệu.
   // Không cần F5.
   useEffect(() => {
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const refreshData = () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
+  const refreshData = () => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
 
-      // Gộp các thay đổi xảy ra sát nhau thành một lần tải dữ liệu.
-      refreshTimer = setTimeout(() => {
-        void loadData(false);
-      }, 150);
-    };
+    refreshTimer = setTimeout(() => {
+      console.log("🔄 BTC Realtime: có thay đổi, đang tải lại...");
+      void loadData(false);
+    }, 300);
+  };
 
-    void loadData();
+  async function setupRealtime() {
+    // Tải dữ liệu ban đầu
+    await loadData();
 
-    const channel = supabase
+    // Lấy session BTC hiện tại
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error("❌ Không lấy được session:", sessionError);
+      return;
+    }
+
+    if (!session) {
+      console.error("❌ Không có auth session BTC");
+      return;
+    }
+
+    // Đưa access token hiện tại cho Realtime
+    await supabase.realtime.setAuth(session.access_token);
+
+    console.log("🔐 BTC Realtime: đã set auth");
+
+    channel = supabase
       .channel("btc-data-realtime")
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "requests",
         },
-        refreshData
+        (payload) => {
+          console.log("🟢 BTC Realtime REQUEST INSERT:", payload);
+          refreshData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "requests",
+        },
+        (payload) => {
+          console.log("🟡 BTC Realtime REQUEST UPDATE:", payload);
+          refreshData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "requests",
+        },
+        (payload) => {
+          console.log("🔴 BTC Realtime REQUEST DELETE:", payload);
+          refreshData();
+        }
       )
       .on(
         "postgres_changes",
@@ -446,7 +499,10 @@ export default function BtcPage() {
           schema: "public",
           table: "items",
         },
-        refreshData
+        (payload) => {
+          console.log("📦 BTC Realtime ITEMS:", payload);
+          refreshData();
+        }
       )
       .on(
         "postgres_changes",
@@ -455,19 +511,44 @@ export default function BtcPage() {
           schema: "public",
           table: "pickup_slots",
         },
-        refreshData
+        (payload) => {
+          console.log("📅 BTC Realtime PICKUP SLOTS:", payload);
+          refreshData();
+        }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
+        console.log("📡 BTC Realtime status:", status);
+
+        if (err) {
+          console.error("❌ BTC Realtime error:", err);
+        }
+
+        if (status === "SUBSCRIBED") {
+          console.log("✅ BTC Realtime đã kết nối thành công!");
+        }
+
         if (status === "CHANNEL_ERROR") {
-          console.error("BTC Realtime channel error.");
+          console.error("❌ BTC Realtime CHANNEL_ERROR");
+        }
+
+        if (status === "TIMED_OUT") {
+          console.error("⏰ BTC Realtime TIMED_OUT");
         }
       });
+  }
 
-    return () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
+  void setupRealtime();
+
+  return () => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    if (channel) {
       void supabase.removeChannel(channel);
-    };
-  }, []);
+    }
+  };
+}, []);
 
   // =========================================================
   // KIỂM TRA QUYỀN BTC TRƯỚC MỌI THAO TÁC THAY ĐỔI
