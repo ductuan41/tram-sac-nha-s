@@ -415,140 +415,230 @@ export default function BtcPage() {
   // Supabase Realtime sẽ báo sự kiện để trang tự tải lại dữ liệu.
   // Không cần F5.
   useEffect(() => {
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  let channel: ReturnType<typeof supabase.channel> | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let pollInFlight = false;
 
-  const refreshData = () => {
-    if (refreshTimer) {
-      clearTimeout(refreshTimer);
-    }
+    const refreshData = () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
 
-    refreshTimer = setTimeout(() => {
-      console.log("🔄 BTC Realtime: có thay đổi, đang tải lại...");
-      void loadData(false);
-    }, 300);
-  };
+      refreshTimer = setTimeout(() => {
+        console.log("🔄 BTC Realtime: có thay đổi, đang tải lại...");
+        void loadData(false);
+      }, 300);
+    };
 
-  async function setupRealtime() {
-    // Tải dữ liệu ban đầu
-    await loadData();
+    const addRequestImmediately = (row: Record<string, unknown>) => {
+      const id = typeof row.id === "string" ? row.id : "";
+      if (!id) return;
 
-    // Lấy session BTC hiện tại
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    if (sessionError) {
-      console.error("❌ Không lấy được session:", sessionError);
-      return;
-    }
-
-    if (!session) {
-      console.error("❌ Không có auth session BTC");
-      return;
-    }
-
-    // Đưa access token hiện tại cho Realtime
-    await supabase.realtime.setAuth(session.access_token);
-
-    console.log("🔐 BTC Realtime: đã set auth");
-
-    channel = supabase
-      .channel("btc-data-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "requests",
-        },
-        (payload) => {
-          console.log("🟢 BTC Realtime REQUEST INSERT:", payload);
-          refreshData();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "requests",
-        },
-        (payload) => {
-          console.log("🟡 BTC Realtime REQUEST UPDATE:", payload);
-          refreshData();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "requests",
-        },
-        (payload) => {
-          console.log("🔴 BTC Realtime REQUEST DELETE:", payload);
-          refreshData();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "items",
-        },
-        (payload) => {
-          console.log("📦 BTC Realtime ITEMS:", payload);
-          refreshData();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "pickup_slots",
-        },
-        (payload) => {
-          console.log("📅 BTC Realtime PICKUP SLOTS:", payload);
-          refreshData();
-        }
-      )
-      .subscribe((status, err) => {
-        console.log("📡 BTC Realtime status:", status);
-
-        if (err) {
-          console.error("❌ BTC Realtime error:", err);
+      setRequests((current) => {
+        if (current.some((request) => request.id === id)) {
+          return current;
         }
 
-        if (status === "SUBSCRIBED") {
-          console.log("✅ BTC Realtime đã kết nối thành công!");
-        }
-
-        if (status === "CHANNEL_ERROR") {
-          console.error("❌ BTC Realtime CHANNEL_ERROR");
-        }
-
-        if (status === "TIMED_OUT") {
-          console.error("⏰ BTC Realtime TIMED_OUT");
-        }
+        return [row as unknown as Request, ...current];
       });
-  }
+    };
 
-  void setupRealtime();
+    const updateRequestImmediately = (row: Record<string, unknown>) => {
+      const id = typeof row.id === "string" ? row.id : "";
+      if (!id) return;
 
-  return () => {
-    if (refreshTimer) {
-      clearTimeout(refreshTimer);
+      setRequests((current) => {
+        const exists = current.some((request) => request.id === id);
+
+        if (!exists) {
+          return [row as unknown as Request, ...current];
+        }
+
+        return current.map((request) =>
+          request.id === id
+            ? ({ ...request, ...row } as Request)
+            : request
+        );
+      });
+    };
+
+    const removeRequestImmediately = (row: Record<string, unknown>) => {
+      const id = typeof row.id === "string" ? row.id : "";
+      if (!id) return;
+
+      setRequests((current) =>
+        current.filter((request) => request.id !== id)
+      );
+    };
+
+    async function setupRealtime() {
+      // Tải dữ liệu ban đầu
+      await loadData();
+
+      // Lấy session BTC hiện tại
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("❌ Không lấy được session:", sessionError);
+        return;
+      }
+
+      if (!session) {
+        console.error("❌ Không có auth session BTC");
+        return;
+      }
+
+      // Đưa access token hiện tại cho Realtime
+      await supabase.realtime.setAuth(session.access_token);
+
+      console.log("🔐 BTC Realtime: đã set auth");
+
+      channel = supabase
+        .channel(`btc-data-realtime-${session.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "requests",
+          },
+          (payload) => {
+            console.log("🟢 BTC Realtime REQUEST INSERT:", payload);
+
+            // Cập nhật UI ngay lập tức.
+            addRequestImmediately(payload.new as Record<string, unknown>);
+
+            // Sau đó tải lại để lấy dữ liệu đầy đủ/đồng bộ tuyệt đối.
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "requests",
+          },
+          (payload) => {
+            console.log("🟡 BTC Realtime REQUEST UPDATE:", payload);
+
+            updateRequestImmediately(
+              payload.new as Record<string, unknown>
+            );
+
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "requests",
+          },
+          (payload) => {
+            console.log("🔴 BTC Realtime REQUEST DELETE:", payload);
+
+            removeRequestImmediately(
+              payload.old as Record<string, unknown>
+            );
+
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "items",
+          },
+          (payload) => {
+            console.log("📦 BTC Realtime ITEMS:", payload);
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "pickup_slots",
+          },
+          (payload) => {
+            console.log("📅 BTC Realtime PICKUP SLOTS:", payload);
+            refreshData();
+          }
+        )
+        .subscribe((status, err) => {
+          console.log("📡 BTC Realtime status:", status);
+
+          if (err) {
+            console.error("❌ BTC Realtime error:", err);
+          }
+
+          if (status === "SUBSCRIBED") {
+            console.log("✅ BTC Realtime đã kết nối thành công!");
+            console.log(
+              "🟢 BTC Realtime đang nghe INSERT/UPDATE/DELETE của requests."
+            );
+          }
+
+          if (status === "CHANNEL_ERROR") {
+            console.error("❌ BTC Realtime CHANNEL_ERROR");
+          }
+
+          if (status === "TIMED_OUT") {
+            console.error("⏰ BTC Realtime TIMED_OUT");
+          }
+        });
+
+      /*
+       * FALLBACK:
+       * Nếu Supabase Realtime không gửi event vì cấu hình RLS/publication
+       * hoặc trình duyệt mất kết nối tạm thời, BTC vẫn tự thấy phiếu mới.
+       *
+       * Đây không phải F5 và không cần người dùng thao tác gì.
+       */
+      pollTimer = setInterval(async () => {
+        if (pollInFlight) return;
+
+        pollInFlight = true;
+
+        try {
+          await loadData(false);
+        } catch (error) {
+          console.error("❌ BTC fallback refresh error:", error);
+        } finally {
+          pollInFlight = false;
+        }
+      }, 3000);
+
+      console.log(
+        "🔁 BTC fallback refresh đã bật: kiểm tra dữ liệu mỗi 3 giây."
+      );
     }
 
-    if (channel) {
-      void supabase.removeChannel(channel);
-    }
-  };
-}, []);
+    void setupRealtime();
+
+    return () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+
+      if (pollTimer) {
+        clearInterval(pollTimer);
+      }
+
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+    };
+  }, []);
 
   // =========================================================
   // KIỂM TRA QUYỀN BTC TRƯỚC MỌI THAO TÁC THAY ĐỔI
