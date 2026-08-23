@@ -61,9 +61,15 @@ export default function KhoPage() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [sortOption, setSortOption] = useState<"newest" | "name-asc" | "remaining-desc">("newest");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [viewMode, setViewMode] = useState<"1" | "2">("2");
 
   useEffect(() => {
     loadData();
+
+    const savedViewMode = window.localStorage.getItem("kho-view-mode");
+    if (savedViewMode === "1" || savedViewMode === "2") {
+      setViewMode(savedViewMode);
+    }
   }, []);
 
   async function loadData() {
@@ -484,7 +490,45 @@ export default function KhoPage() {
                 </select>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Kiểu hiển thị:
+                  </span>
+
+                  <button
+                    type="button"
+                    aria-pressed={viewMode === "1"}
+                    onClick={() => {
+                      setViewMode("1");
+                      window.localStorage.setItem("kho-view-mode", "1");
+                    }}
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      viewMode === "1"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    ☰ 1 cột
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-pressed={viewMode === "2"}
+                    onClick={() => {
+                      setViewMode("2");
+                      window.localStorage.setItem("kho-view-mode", "2");
+                    }}
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      viewMode === "2"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    ▦ 2 cột
+                  </button>
+                </div>
+
                 <label className="inline-flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-700">
                   <input
                     type="checkbox"
@@ -560,7 +604,13 @@ export default function KhoPage() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className={`grid gap-6 ${
+              viewMode === "1"
+                ? "grid-cols-1"
+                : "grid-cols-1 sm:grid-cols-2"
+            }`}
+          >
             {filteredItems.map((item) => {
               const remaining = getRemainingQuantity(item);
               const available = isItemAvailable(item);
@@ -568,9 +618,15 @@ export default function KhoPage() {
               return (
                 <div
                   key={item.id}
-                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200"
+                  className={`overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ${
+                    viewMode === "1" ? "lg:flex" : ""
+                  }`}
                 >
-                  <div className="flex h-64 items-center justify-center bg-slate-100">
+                  <div
+                    className={`flex h-64 items-center justify-center bg-slate-100 ${
+                      viewMode === "1" ? "lg:h-auto lg:w-2/5 lg:shrink-0" : ""
+                    }`}
+                  >
                     {item.image_url ? (
                       <img
                         src={item.image_url}
@@ -584,7 +640,7 @@ export default function KhoPage() {
                     )}
                   </div>
 
-                  <div className="p-6">
+                  <div className={`p-6 ${viewMode === "1" ? "lg:flex-1" : ""}`}>
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600">
                         {item.item_code ?? "MÃ ĐỒ"}
