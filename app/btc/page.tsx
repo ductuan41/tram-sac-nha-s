@@ -263,8 +263,8 @@ export default function BtcPage() {
   // TẢI DỮ LIỆU
   // =========================================================
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(showLoading = true) {
+    if (showLoading) setLoading(true);
     setError("");
 
     try {
@@ -404,16 +404,69 @@ export default function BtcPage() {
           "Không tải được dữ liệu BTC."
       );
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }
 
   // =========================================================
-  // LOAD LẦN ĐẦU
+  // LOAD LẦN ĐẦU + REALTIME
   // =========================================================
-
+  // Khi sinh viên tạo/hủy phiếu, hoặc BTC thay đổi sản phẩm/lịch,
+  // Supabase Realtime sẽ báo sự kiện để trang tự tải lại dữ liệu.
+  // Không cần F5.
   useEffect(() => {
-    loadData();
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const refreshData = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+
+      // Gộp các thay đổi xảy ra sát nhau thành một lần tải dữ liệu.
+      refreshTimer = setTimeout(() => {
+        void loadData(false);
+      }, 150);
+    };
+
+    void loadData();
+
+    const channel = supabase
+      .channel("btc-data-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "requests",
+        },
+        refreshData
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "items",
+        },
+        refreshData
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pickup_slots",
+        },
+        refreshData
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          console.error("BTC Realtime channel error.");
+        }
+      });
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   // =========================================================
