@@ -47,10 +47,25 @@ type AdminRequest = {
   cancelled_at: string | null;
 };
 
+type InventoryItem = {
+  id: string;
+  item_code: string | null;
+  name: string | null;
+  category: string | null;
+  condition: string | null;
+  description: string | null;
+  image_url: string | null;
+  status: string | null;
+  quantity: number;
+  active_count: number;
+  remaining_quantity: number;
+};
+
 type Dashboard = {
   stats: Stats;
   btc_accounts: BtcAccount[];
   requests: AdminRequest[];
+  inventory: InventoryItem[];
 };
 
 function formatDateTime(value: string | null) {
@@ -73,7 +88,10 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [deliveryFilter, setDeliveryFilter] = useState("ALL");
-  const [activeTab, setActiveTab] = useState<"overview" | "requests" | "btc">("overview");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState("ALL");
+  const [resetting, setResetting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "requests" | "btc" | "inventory">("overview");
 
   async function loadDashboard(showLoading = true) {
     if (showLoading) setLoading(true);
@@ -141,6 +159,46 @@ export default function AdminPage() {
     });
   }, [dashboard, search, statusFilter, deliveryFilter]);
 
+  const filteredInventory = useMemo(() => {
+    const keyword = inventorySearch.trim().toLowerCase();
+    return (dashboard?.inventory || []).filter((item) => {
+      if (inventoryStatusFilter !== "ALL" && (item.status || "AVAILABLE") !== inventoryStatusFilter) {
+        return false;
+      }
+      if (!keyword) return true;
+      return [item.item_code, item.name, item.category, item.condition, item.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword));
+    });
+  }, [dashboard, inventorySearch, inventoryStatusFilter]);
+
+  async function resetTestData() {
+    const first = window.confirm(
+      "CẢNH BÁO: Thao tác này sẽ xóa toàn bộ dữ liệu vận hành/test như sản phẩm, phiếu đăng ký, lịch nhận và giao dịch. Tài khoản Admin/BTC sẽ KHÔNG bị xóa. Bạn có chắc chắn không?"
+    );
+    if (!first) return;
+
+    const phrase = window.prompt('Để xác nhận, hãy nhập chính xác: XOA DU LIEU TEST');
+    if (phrase !== "XOA DU LIEU TEST") {
+      window.alert("Đã hủy. Dữ liệu chưa bị xóa.");
+      return;
+    }
+
+    setResetting(true);
+    setError("");
+    try {
+      const { error: rpcError } = await supabase.rpc("reset_test_data");
+      if (rpcError) throw rpcError;
+      await loadDashboard(false);
+      window.alert("Đã xóa dữ liệu test thành công. Tài khoản Admin/BTC vẫn được giữ lại.");
+    } catch (err: any) {
+      console.error("Reset test data error:", err);
+      setError(err?.message || "Không thể xóa dữ liệu test.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     window.location.replace("/dang-nhap");
@@ -186,12 +244,21 @@ export default function AdminPage() {
               Theo dõi toàn bộ BTC, sản phẩm, phiếu nhận và lịch sử thao tác.
             </p>
           </div>
-          <button
-            onClick={logout}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-100"
-          >
-            Đăng xuất
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={resetTestData}
+              disabled={resetting}
+              className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resetting ? "Đang xóa..." : "🗑️ Xóa dữ liệu test"}
+            </button>
+            <button
+              onClick={logout}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-100"
+            >
+              Đăng xuất
+            </button>
+          </div>
         </header>
 
         {error && (
@@ -205,6 +272,7 @@ export default function AdminPage() {
             ["overview", "Tổng quan"],
             ["requests", "Tất cả phiếu"],
             ["btc", "Đội ngũ BTC"],
+            ["inventory", "🗃️ Kho đồ"],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -306,6 +374,117 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {activeTab === "inventory" && (
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">🗃️ Kho đồ</h2>
+                <p className="mt-1 text-slate-500">
+                  Xem toàn bộ sản phẩm hiện có, số lượng tổng và số lượng còn lại.
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                {filteredInventory.length} / {dashboard?.inventory?.length || 0} sản phẩm
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                value={inventorySearch}
+                onChange={(e) => setInventorySearch(e.target.value)}
+                placeholder="Tìm mã đồ, tên đồ, danh mục, tình trạng..."
+                className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+              <select
+                value={inventoryStatusFilter}
+                onChange={(e) => setInventoryStatusFilter(e.target.value)}
+                className="rounded-xl border border-slate-300 px-4 py-3"
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="AVAILABLE">🟢 Còn hàng</option>
+                <option value="PENDING">🟡 Chờ xử lý</option>
+                <option value="HELD">🟠 Đang giữ</option>
+                <option value="TRANSFERRED">⚫ Đã chuyển</option>
+              </select>
+            </div>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {filteredInventory.map((item) => {
+                const status = item.status || "AVAILABLE";
+                const statusText =
+                  status === "AVAILABLE"
+                    ? "Còn hàng"
+                    : status === "PENDING"
+                      ? "Chờ xử lý"
+                      : status === "HELD"
+                        ? "Đang giữ"
+                        : status === "TRANSFERRED"
+                          ? "Đã chuyển"
+                          : status;
+
+                return (
+                  <article key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="aspect-[4/3] bg-slate-100">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name || "Sản phẩm"}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-5xl">📦</div>
+                      )}
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-blue-600">{item.item_code || "Không có mã"}</p>
+                          <h3 className="mt-1 text-xl font-black text-slate-900">
+                            {item.name || "Không rõ tên"}
+                          </h3>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                          {statusText}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <p className="text-xs font-semibold text-slate-500">Tổng số lượng</p>
+                          <p className="mt-1 text-2xl font-black text-violet-600">{item.quantity}</p>
+                        </div>
+                        <div className="rounded-xl bg-emerald-50 p-3">
+                          <p className="text-xs font-semibold text-slate-500">Còn lại</p>
+                          <p className="mt-1 text-2xl font-black text-emerald-600">
+                            {item.remaining_quantity}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-1 text-sm text-slate-600">
+                        {item.category && <p><b>Danh mục:</b> {item.category}</p>}
+                        {item.condition && <p><b>Tình trạng:</b> {item.condition}</p>}
+                        <p><b>Đang có phiếu:</b> {item.active_count}</p>
+                      </div>
+
+                      {item.description && (
+                        <p className="mt-3 line-clamp-3 text-sm text-slate-500">{item.description}</p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {filteredInventory.length === 0 && (
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+                Không có sản phẩm phù hợp.
+              </div>
+            )}
           </section>
         )}
 
