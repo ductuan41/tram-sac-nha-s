@@ -224,18 +224,18 @@ export default function AdminPage() {
           <>
             <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {[
-                ["Tổng phiếu", stats?.total_requests ?? 0],
-                ["Chờ duyệt", stats?.pending_requests ?? 0],
-                ["Đã duyệt", stats?.approved_requests ?? 0],
-                ["Đã giao", stats?.delivered_requests ?? 0],
-                ["Đã hủy", stats?.cancelled_requests ?? 0],
-                ["Tổng sản phẩm", stats?.total_items ?? 0],
-                ["Đang có sẵn", stats?.available_items ?? 0],
-                ["Tài khoản BTC", stats?.total_btc ?? 0],
-              ].map(([label, value]) => (
+                ["Tổng phiếu", stats?.total_requests ?? 0, "text-blue-600"],
+                ["Chờ duyệt", stats?.pending_requests ?? 0, "text-amber-500"],
+                ["Đã duyệt", stats?.approved_requests ?? 0, "text-indigo-600"],
+                ["Đã giao", stats?.delivered_requests ?? 0, "text-emerald-600"],
+                ["Đã hủy", stats?.cancelled_requests ?? 0, "text-rose-600"],
+                ["Tổng sản phẩm", stats?.total_items ?? 0, "text-violet-600"],
+                ["Đang có sẵn", stats?.available_items ?? 0, "text-cyan-600"],
+                ["Tài khoản BTC", stats?.total_btc ?? 0, "text-orange-500"],
+              ].map(([label, value, numberClass]) => (
                 <div key={String(label)} className="rounded-2xl bg-white p-6 shadow-sm">
                   <p className="text-sm font-semibold text-slate-500">{label}</p>
-                  <p className="mt-2 text-4xl font-black text-slate-900">{value}</p>
+                  <p className={`mt-2 text-4xl font-black ${numberClass}`}>{value}</p>
                 </div>
               ))}
             </section>
