@@ -1040,10 +1040,10 @@ ${errorMessage}`);
   }
 
   // =========================================================
-  // BTC XÁC NHẬN ĐÃ GIAO ĐỒ
+  // BTC DUYỆT PHIẾU / XÁC NHẬN ĐÃ GIAO ĐỒ
   // =========================================================
 
-  async function confirmHandover(request: Request) {
+  async function processRequest(request: Request) {
     setMessage("");
     setError("");
 
@@ -1054,56 +1054,45 @@ ${errorMessage}`);
     setProcessingId(request.id);
 
     try {
-      // -------------------------------------------------------
-      // 1. Phiếu -> DELIVERED
-      //
-      // Database của bạn cho phép:
-      // PENDING / APPROVED / CANCELLED / DELIVERED
-      // -------------------------------------------------------
-
-      const { error: requestError } =
-        await supabase
+      // PENDING -> APPROVED: chỉ duyệt phiếu, chưa tính là đã giao.
+      if (request.status === "PENDING") {
+        const { error: requestError } = await supabase
           .from("requests")
-          .update({
-            status: "DELIVERED",
-          })
+          .update({ status: "APPROVED" })
           .eq("id", request.id);
 
-      if (requestError) {
-        throw requestError;
+        if (requestError) throw requestError;
+
+        setMessage("Đã duyệt phiếu thành công. Phiếu chuyển sang trạng thái Đã duyệt.");
+        await loadData();
+        return;
       }
 
-      // -------------------------------------------------------
-      // 2. Đồ -> HELD
-      // -------------------------------------------------------
+      // APPROVED -> DELIVERED: chỉ khi BTC bấm lần nữa mới xác nhận đã giao.
+      if (request.status === "APPROVED") {
+        const { error: requestError } = await supabase
+          .from("requests")
+          .update({ status: "DELIVERED" })
+          .eq("id", request.id);
 
-      const { error: itemError } =
-        await supabase
+        if (requestError) throw requestError;
+
+        const { error: itemError } = await supabase
           .from("items")
-          .update({
-            status: "HELD",
-          })
+          .update({ status: "HELD" })
           .eq("id", request.item_id);
 
-      if (itemError) {
-        throw itemError;
+        if (itemError) throw itemError;
+
+        setMessage("Đã xác nhận giao đồ thành công!");
+        await loadData();
+        return;
       }
 
-      setMessage(
-        "Đã xác nhận giao đồ thành công!"
-      );
-
-      await loadData();
+      throw new Error("Phiếu này không còn ở trạng thái có thể xử lý.");
     } catch (err: any) {
-      console.error(
-        "Confirm handover error:",
-        err
-      );
-
-      setError(
-        err?.message ||
-          "Không thể xác nhận giao đồ."
-      );
+      console.error("Process request error:", err);
+      setError(err?.message || "Không thể xử lý phiếu.");
     } finally {
       setProcessingId(null);
     }
@@ -1256,33 +1245,6 @@ ${errorMessage}`);
             Đăng xuất
           </button>
         </div>
-
-        {/* THÔNG TIN BTC */}
-
-        {profile && (
-          <div className="rounded-2xl bg-white border border-slate-200 p-7 mb-8 shadow-sm">
-            <p className="text-slate-500 text-lg">
-              Tài khoản BTC
-            </p>
-
-            <p className="text-3xl font-black text-slate-900 mt-1">
-              {profile.full_name || "BTC"}
-            </p>
-
-            {profile.student_id && (
-              <p className="text-slate-600 mt-2">
-                MSSV: {profile.student_id}
-              </p>
-            )}
-
-            <p className="text-sm text-slate-400 mt-2">
-              Quyền: {profile.role}
-            </p>
-            <p className="text-sm text-green-600 font-semibold mt-2">
-              Chỉ tài khoản BTC mới được thêm, sửa, xóa và xử lý phiếu.
-            </p>
-          </div>
-        )}
 
         {/* THÔNG BÁO */}
 
@@ -1665,13 +1627,15 @@ ${errorMessage}`);
                           type="button"
                           disabled={isProcessing}
                           onClick={() =>
-                            confirmHandover(request)
+                            processRequest(request)
                           }
                           className="w-full mt-6 rounded-xl bg-blue-600 text-white py-4 font-bold text-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isProcessing
                             ? "Đang xử lý..."
-                            : "Xác nhận đã giao đồ"}
+                            : request.status === "PENDING"
+                              ? "Duyệt phiếu"
+                              : "Xác nhận đã giao đồ"}
                         </button>
 
                         {/* HỦY */}
