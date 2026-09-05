@@ -48,6 +48,8 @@ type Request = {
   pickup_location: string | null;
   full_name: string | null;
   pickup_slot_id: string | null;
+  delivery_method: "PICKUP" | "SHIP" | null;
+  shipping_address: string | null;
 };
 
 function formatTimeForInput(value: string | null | undefined) {
@@ -378,7 +380,9 @@ export default function BtcPage() {
           phone,
           pickup_location,
           full_name,
-          pickup_slot_id
+          pickup_slot_id,
+          delivery_method,
+          shipping_address
         `
         )
         .order("created_at", {
@@ -1494,61 +1498,80 @@ ${errorMessage}`);
                           "Chưa có"}
                       </p>
 
-                      {(() => {
-                        const slot = request.pickup_slot_id
-                          ? slotsById[request.pickup_slot_id]
-                          : undefined;
+                      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                        <p className="font-bold text-slate-900">
+                          Hình thức nhận đồ
+                        </p>
 
-                        const location =
-                          slot?.pickup_location ||
-                          request.pickup_location ||
-                          "Chưa có";
-
-                        const date =
-                          slot?.pickup_date ||
-                          request.pickup_date;
-
-                        return (
-                          <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                            <p className="font-bold text-slate-900">
-                              Lịch nhận đồ
+                        {request.delivery_method === "SHIP" ? (
+                          <>
+                            <p className="text-slate-700 mt-2">
+                              🚚 <span className="font-semibold">Ship hàng</span>
                             </p>
-
                             <p className="text-slate-700 mt-2">
                               <span className="font-semibold">
-                                Nơi lấy:
+                                Địa chỉ nhận:
                               </span>{" "}
-                              {location}
+                              {request.shipping_address || "Chưa có"}
                             </p>
-
+                            <p className="text-sm text-slate-500 mt-3">
+                              BTC liên hệ sinh viên để xử lý việc giao hàng.
+                            </p>
+                          </>
+                        ) : (
+                          <>
                             <p className="text-slate-700 mt-2">
-                              <span className="font-semibold">
-                                Ngày lấy:
-                              </span>{" "}
-                              {date
-                                ? new Date(
-                                    `${date}T00:00:00`
-                                  ).toLocaleDateString("vi-VN")
-                                : "Chưa có"}
+                              🏠 <span className="font-semibold">Đến lấy trực tiếp</span>
                             </p>
 
-                            <p className="text-slate-700 mt-2">
-                              <span className="font-semibold">
-                                Khung giờ:
-                              </span>{" "}
-                              {slot
-                                ? `${normalizeStoredTime(slot.pickup_start_time)} - ${normalizeStoredTime(slot.pickup_end_time)}`
-                                : "Chưa có"}
-                            </p>
+                            {(() => {
+                              const slot = request.pickup_slot_id
+                                ? slotsById[request.pickup_slot_id]
+                                : undefined;
 
-                            {request.pickup_slot_id && (
-                              <p className="text-xs text-slate-500 mt-2 break-all">
-                                Mã lịch: {request.pickup_slot_id}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
+                              const location =
+                                slot?.pickup_location ||
+                                request.pickup_location ||
+                                "Chưa có";
+
+                              const date =
+                                slot?.pickup_date ||
+                                request.pickup_date;
+
+                              return (
+                                <>
+                                  <p className="text-slate-700 mt-2">
+                                    <span className="font-semibold">
+                                      Nơi lấy:
+                                    </span>{" "}
+                                    {location}
+                                  </p>
+
+                                  <p className="text-slate-700 mt-2">
+                                    <span className="font-semibold">
+                                      Ngày lấy:
+                                    </span>{" "}
+                                    {date
+                                      ? new Date(
+                                          `${date}T00:00:00`
+                                        ).toLocaleDateString("vi-VN")
+                                      : "Chưa có"}
+                                  </p>
+
+                                  <p className="text-slate-700 mt-2">
+                                    <span className="font-semibold">
+                                      Khung giờ:
+                                    </span>{" "}
+                                    {slot
+                                      ? `${normalizeStoredTime(slot.pickup_start_time)} - ${normalizeStoredTime(slot.pickup_end_time)}`
+                                      : "Chưa có"}
+                                  </p>
+                                </>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
 
                     </div>
 
