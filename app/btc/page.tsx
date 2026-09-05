@@ -106,6 +106,7 @@ export default function BtcPage() {
 
   // Bộ lọc phiếu BTC
   const [requestStatusFilter, setRequestStatusFilter] = useState("PENDING");
+  const [requestDeliveryFilter, setRequestDeliveryFilter] = useState<"ALL" | "PICKUP" | "SHIP">("ALL");
   const [requestLocationFilter, setRequestLocationFilter] = useState("");
   const [requestDateFilter, setRequestDateFilter] = useState("");
   const [requestTimeFilter, setRequestTimeFilter] = useState("");
@@ -184,6 +185,13 @@ export default function BtcPage() {
 
   const filteredRequests = requests.filter((request) => {
     if (
+      requestDeliveryFilter !== "ALL" &&
+      (request.delivery_method || "PICKUP") !== requestDeliveryFilter
+    ) {
+      return false;
+    }
+
+    if (
       requestStatusFilter !== "ALL" &&
       request.status !== requestStatusFilter
     ) {
@@ -216,6 +224,7 @@ export default function BtcPage() {
 
   function clearRequestFilters() {
     setRequestStatusFilter("PENDING");
+    setRequestDeliveryFilter("ALL");
     setRequestLocationFilter("");
     setRequestDateFilter("");
     setRequestTimeFilter("");
@@ -1302,7 +1311,7 @@ ${errorMessage}`);
               </h2>
 
               <p className="text-slate-600 mt-2">
-                Lọc phiếu theo trạng thái, địa điểm, ngày và khung giờ nhận.
+                Lọc nhanh theo trạng thái, hình thức nhận, địa điểm, ngày và khung giờ.
               </p>
             </div>
 
@@ -1312,7 +1321,7 @@ ${errorMessage}`);
           </div>
 
           <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <label className="block">
                 <span className="font-semibold text-slate-700">
                   Trạng thái
@@ -1327,6 +1336,25 @@ ${errorMessage}`);
                   <option value="DELIVERED">Đã giao</option>
                   <option value="CANCELLED">Đã hủy</option>
                   <option value="ALL">Tất cả</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="font-semibold text-slate-700">
+                  Hình thức nhận
+                </span>
+                <select
+                  value={requestDeliveryFilter}
+                  onChange={(e) =>
+                    setRequestDeliveryFilter(
+                      e.target.value as "ALL" | "PICKUP" | "SHIP"
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                >
+                  <option value="ALL">Tất cả</option>
+                  <option value="PICKUP">🏠 Lấy trực tiếp</option>
+                  <option value="SHIP">🚚 Ship hàng</option>
                 </select>
               </label>
 
@@ -1386,6 +1414,42 @@ ${errorMessage}`);
                   })}
                 </select>
               </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setRequestDeliveryFilter("ALL")}
+                className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                  requestDeliveryFilter === "ALL"
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                Tất cả hình thức
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequestDeliveryFilter("PICKUP")}
+                className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                  requestDeliveryFilter === "PICKUP"
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                🏠 Lấy trực tiếp ({requests.filter((r) => (r.delivery_method || "PICKUP") === "PICKUP").length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRequestDeliveryFilter("SHIP")}
+                className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                  requestDeliveryFilter === "SHIP"
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                🚚 Ship hàng ({requests.filter((r) => r.delivery_method === "SHIP").length})
+              </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
