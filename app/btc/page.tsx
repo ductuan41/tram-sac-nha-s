@@ -50,6 +50,15 @@ type Request = {
   pickup_slot_id: string | null;
   delivery_method: "PICKUP" | "SHIP" | null;
   shipping_address: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  approved_by_name: string | null;
+  delivered_by: string | null;
+  delivered_at: string | null;
+  delivered_by_name: string | null;
+  cancelled_by: string | null;
+  cancelled_at: string | null;
+  cancelled_by_name: string | null;
 };
 
 function formatTimeForInput(value: string | null | undefined) {
@@ -321,7 +330,15 @@ export default function BtcPage() {
         return;
       }
 
-      setProfile(profileData);
+      const displayName =
+        profileData.full_name?.trim() ||
+        (typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name.trim()
+          : "") ||
+        user.email ||
+        "BTC";
+
+      setProfile({ ...profileData, full_name: displayName });
 
       // -------------------------------------------------------
       // 4. Lấy danh sách đồ
@@ -391,7 +408,16 @@ export default function BtcPage() {
           full_name,
           pickup_slot_id,
           delivery_method,
-          shipping_address
+          shipping_address,
+          approved_by,
+          approved_at,
+          approved_by_name,
+          delivered_by,
+          delivered_at,
+          delivered_by_name,
+          cancelled_by,
+          cancelled_at,
+          cancelled_by_name
         `
         )
         .order("created_at", {
@@ -1054,42 +1080,19 @@ ${errorMessage}`);
     setProcessingId(request.id);
 
     try {
-      // PENDING -> APPROVED: chỉ duyệt phiếu, chưa tính là đã giao.
-      if (request.status === "PENDING") {
-        const { error: requestError } = await supabase
-          .from("requests")
-          .update({ status: "APPROVED" })
-          .eq("id", request.id);
+      const { error: rpcError } = await supabase.rpc(
+        "process_pickup_request_by_btc",
+        { p_request_id: request.id }
+      );
 
-        if (requestError) throw requestError;
+      if (rpcError) throw rpcError;
 
-        setMessage("Đã duyệt phiếu thành công. Phiếu chuyển sang trạng thái Đã duyệt.");
-        await loadData();
-        return;
-      }
-
-      // APPROVED -> DELIVERED: chỉ khi BTC bấm lần nữa mới xác nhận đã giao.
-      if (request.status === "APPROVED") {
-        const { error: requestError } = await supabase
-          .from("requests")
-          .update({ status: "DELIVERED" })
-          .eq("id", request.id);
-
-        if (requestError) throw requestError;
-
-        const { error: itemError } = await supabase
-          .from("items")
-          .update({ status: "HELD" })
-          .eq("id", request.item_id);
-
-        if (itemError) throw itemError;
-
-        setMessage("Đã xác nhận giao đồ thành công!");
-        await loadData();
-        return;
-      }
-
-      throw new Error("Phiếu này không còn ở trạng thái có thể xử lý.");
+      setMessage(
+        request.status === "PENDING"
+          ? "Đã duyệt phiếu thành công."
+          : "Đã xác nhận giao đồ thành công!"
+      );
+      await loadData();
     } catch (err: any) {
       console.error("Process request error:", err);
       setError(err?.message || "Không thể xử lý phiếu.");
@@ -1113,53 +1116,18 @@ ${errorMessage}`);
     setProcessingId(request.id);
 
     try {
-      // -------------------------------------------------------
-      // 1. Phiếu -> CANCELLED
-      // -------------------------------------------------------
-
-      const { error: requestError } =
-        await supabase
-          .from("requests")
-          .update({
-            status: "CANCELLED",
-          })
-          .eq("id", request.id);
-
-      if (requestError) {
-        throw requestError;
-      }
-
-      // -------------------------------------------------------
-      // 2. Đồ -> AVAILABLE
-      // -------------------------------------------------------
-
-      const { error: itemError } =
-        await supabase
-          .from("items")
-          .update({
-            status: "AVAILABLE",
-          })
-          .eq("id", request.item_id);
-
-      if (itemError) {
-        throw itemError;
-      }
-
-      setMessage(
-        "Đã hủy phiếu và trả đồ về kho."
+      const { error: rpcError } = await supabase.rpc(
+        "cancel_pickup_request_by_btc",
+        { p_request_id: request.id }
       );
 
+      if (rpcError) throw rpcError;
+
+      setMessage("Đã hủy phiếu và trả đồ về kho.");
       await loadData();
     } catch (err: any) {
-      console.error(
-        "Cancel request error:",
-        err
-      );
-
-      setError(
-        err?.message ||
-          "Không thể hủy phiếu."
-      );
+      console.error("Cancel request error:", err);
+      setError(err?.message || "Không thể hủy phiếu.");
     } finally {
       setProcessingId(null);
     }
@@ -1235,6 +1203,12 @@ ${errorMessage}`);
             <p className="text-slate-600 text-lg mt-3">
               Quản lý việc giao và nhận đồ.
             </p>
+
+            {profile?.full_name && (
+              <p className="text-blue-700 font-semibold mt-2">
+                Xin chào, {profile.full_name}
+              </p>
+            )}
           </div>
 
           <button
@@ -1600,6 +1574,32 @@ ${errorMessage}`);
                       </div>
 
                     </div>
+
+                    {(request.approved_by_name ||
+                      request.delivered_by_name ||
+                      request.cancelled_by_name) && (
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="font-bold text-slate-900">Lịch sử thao tác</p>
+                        {request.approved_by_name && (
+                          <p className="text-sm text-slate-600 mt-2">
+                            ✅ Duyệt phiếu: <span className="font-semibold">{request.approved_by_name}</span>
+                            {request.approved_at ? ` · ${new Date(request.approved_at).toLocaleString("vi-VN")}` : ""}
+                          </p>
+                        )}
+                        {request.delivered_by_name && (
+                          <p className="text-sm text-slate-600 mt-2">
+                            📦 Giao đồ: <span className="font-semibold">{request.delivered_by_name}</span>
+                            {request.delivered_at ? ` · ${new Date(request.delivered_at).toLocaleString("vi-VN")}` : ""}
+                          </p>
+                        )}
+                        {request.cancelled_by_name && (
+                          <p className="text-sm text-slate-600 mt-2">
+                            ❌ Hủy phiếu: <span className="font-semibold">{request.cancelled_by_name}</span>
+                            {request.cancelled_at ? ` · ${new Date(request.cancelled_at).toLocaleString("vi-VN")}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* MÃ PHIẾU */}
 
