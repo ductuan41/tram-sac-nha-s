@@ -417,6 +417,17 @@ export default function KhoPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-black text-slate-900">📋 Đã đăng ký rồi?</p>
+            <p className="mt-1 text-sm text-slate-600">Nhập họ tên và số điện thoại để xem tình trạng phiếu đăng ký.</p>
+          </div>
+          <a href="/theo-doi" className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">
+            Theo dõi đăng ký →
+          </a>
+        </div>
+      </div>
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="mb-10">
           <p className="mb-3 text-sm font-bold uppercase tracking-wider text-blue-600">
