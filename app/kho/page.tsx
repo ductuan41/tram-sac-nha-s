@@ -27,10 +27,14 @@ type PickupSlot = {
   created_at: string | null;
 };
 
+type DeliveryMethod = "PICKUP" | "SHIP";
+
 type RequestForm = {
+  delivery_method: DeliveryMethod | "";
   full_name: string;
   phone: string;
   pickup_slot_id: string;
+  shipping_address: string;
 };
 
 export default function KhoPage() {
@@ -47,9 +51,11 @@ export default function KhoPage() {
   );
 
   const [form, setForm] = useState<RequestForm>({
+    delivery_method: "",
     full_name: "",
     phone: "",
     pickup_slot_id: "",
+    shipping_address: "",
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -182,9 +188,11 @@ export default function KhoPage() {
     setFormError("");
 
     setForm({
+      delivery_method: "",
       full_name: "",
       phone: "",
       pickup_slot_id: itemSlots[0]?.id ?? "",
+      shipping_address: "",
     });
   }
 
@@ -211,6 +219,11 @@ export default function KhoPage() {
     setFormError("");
     setSuccessMessage("");
 
+    if (!form.delivery_method) {
+      setFormError("Vui lòng chọn hình thức nhận đồ.");
+      return;
+    }
+
     if (!form.full_name.trim()) {
       setFormError("Vui lòng nhập họ và tên.");
       return;
@@ -221,85 +234,84 @@ export default function KhoPage() {
       return;
     }
 
-    if (!form.pickup_slot_id) {
-      setFormError("Vui lòng chọn một lịch nhận đồ.");
-      return;
+    let selectedSlot: PickupSlot | undefined;
+
+    if (form.delivery_method === "PICKUP") {
+      if (!form.pickup_slot_id) {
+        setFormError("Vui lòng chọn một lịch nhận đồ.");
+        return;
+      }
+
+      selectedSlot = selectedSlots.find(
+        (slot) => slot.id === form.pickup_slot_id
+      );
+
+      if (!selectedSlot) {
+        setFormError("Lịch nhận đồ không còn tồn tại hoặc đã được đóng.");
+        return;
+      }
     }
 
-    const selectedSlot = selectedSlots.find(
-      (slot) => slot.id === form.pickup_slot_id
-    );
-
-    if (!selectedSlot) {
-      setFormError("Lịch nhận đồ không còn tồn tại hoặc đã được đóng.");
+    if (form.delivery_method === "SHIP" && !form.shipping_address.trim()) {
+      setFormError("Vui lòng nhập địa chỉ nhận hàng.");
       return;
     }
 
     try {
       setSubmitting(true);
 
-        const { error: requestError } = await supabase.rpc(
+      const { error: requestError } = await supabase.rpc(
         "create_pickup_request",
-
         {
-
           p_item_id: selectedItem.id,
-
-          p_pickup_slot_id: selectedSlot.id,
-
+          p_delivery_method: form.delivery_method,
+          p_pickup_slot_id: selectedSlot?.id ?? null,
           p_full_name: form.full_name.trim(),
-
           p_phone: form.phone.trim(),
-
+          p_shipping_address:
+            form.delivery_method === "SHIP"
+              ? form.shipping_address.trim()
+              : null,
         }
-
       );
 
       if (requestError) {
-
         const message = requestError.message || "";
 
         if (message.includes("đã đăng ký")) {
-
           throw new Error(
-
-            "Bạn đã đăng ký sản phẩm này rồi. Mỗi sinh viên chỉ được đăng ký 1 lần."
-
+            "Bạn đã đăng ký sản phẩm này rồi. Mỗi sinh viên chỉ được đăng ký 1 lần cho một sản phẩm."
           );
-
         }
 
         if (message.includes("hết hàng")) {
-
           throw new Error(
-
             "Sản phẩm vừa hết hàng. Một sinh viên khác có thể đã đăng ký trước bạn."
-
           );
-
         }
 
         if (message.includes("Lịch nhận đồ")) {
-
           throw new Error(
-
             "Lịch nhận đồ này không còn hoạt động. Vui lòng chọn lịch khác."
-
           );
-
         }
 
         throw new Error(message);
-
       }
 
-      setSuccessMessage(
-        `Đăng ký thành công! Lịch nhận: ${selectedSlot.pickup_location} · ${formatDate(
-          selectedSlot.pickup_date
-        )} · ${formatTime(selectedSlot.pickup_start_time)} - ${formatTime(
-          selectedSlot.pickup_end_time
-        )}.`
-      );
+      if (form.delivery_method === "SHIP") {
+        setSuccessMessage(
+          "Đăng ký ship thành công! BTC sẽ liên hệ với bạn để xác nhận việc giao hàng."
+        );
+      } else if (selectedSlot) {
+        setSuccessMessage(
+          `Đăng ký thành công! Lịch nhận: ${selectedSlot.pickup_location} · ${formatDate(
+            selectedSlot.pickup_date
+          )} · ${formatTime(selectedSlot.pickup_start_time)} - ${formatTime(
+            selectedSlot.pickup_end_time
+          )}.`
+        );
+      }
 
       setRegisteredCounts((current) => ({
         ...current,
@@ -348,12 +360,9 @@ export default function KhoPage() {
   }
 
   function isItemAvailable(item: Item) {
-    // Kho sinh viên không dùng status của BTC để khóa nút Lấy đồ.
-    // Chỉ cần sản phẩm còn số lượng và có ít nhất một lịch nhận đồ đang mở.
-    const remaining = getRemainingQuantity(item);
-    const hasActivePickupSlot = getItemSlots(item.id).length > 0;
-
-    return remaining > 0 && hasActivePickupSlot;
+    // Sản phẩm còn hàng thì có thể đăng ký.
+    // Nếu chọn lấy trực tiếp, sinh viên sẽ cần lịch nhận do BTC mở.
+    return getRemainingQuantity(item) > 0;
   }
 
   const locationOptions = Array.from(
@@ -822,112 +831,185 @@ getRemainingQuantity(item) <= 0
               )}
 
               <div className="space-y-6">
-                <div>
-                  <label className="mb-2 block text-lg font-bold text-slate-800">
-                    Họ và tên
-                  </label>
+                {!form.delivery_method ? (
+                  <div>
+                    <p className="mb-4 text-lg font-bold text-slate-800">
+                      Bạn muốn nhận đồ theo hình thức nào?
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            delivery_method: "PICKUP",
+                          }))
+                        }
+                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-blue-500 hover:bg-blue-50"
+                      >
+                        <div className="text-3xl">🏠</div>
+                        <p className="mt-3 text-lg font-bold text-slate-900">
+                          Bạn muốn đến lấy trực tiếp
+                        </p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Chọn địa điểm, ngày và khung giờ do BTC mở.
+                        </p>
+                      </button>
 
-                  <input
-                    type="text"
-                    value={form.full_name}
-                    onChange={(e) =>
-                      updateForm(
-                        "full_name",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Nguyễn Văn A"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-lg font-bold text-slate-800">
-                    Số điện thoại
-                  </label>
-
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) =>
-                      updateForm(
-                        "phone",
-                        e.target.value
-                      )
-                    }
-                    placeholder="0912345678"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
-                  <label className="mb-2 block text-lg font-bold text-slate-800">
-                    Chọn lịch nhận đồ
-                  </label>
-
-                  <p className="mb-4 text-sm text-slate-600">
-                    Bạn chỉ có thể chọn ngày, địa điểm và khung giờ do BTC đã mở.
-                  </p>
-
-                  {selectedSlots.length === 0 ? (
-                    <div className="rounded-xl bg-white p-4 text-slate-500">
-                      Sản phẩm này hiện chưa có lịch nhận đồ.
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            delivery_method: "SHIP",
+                            pickup_slot_id: "",
+                          }))
+                        }
+                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-blue-500 hover:bg-blue-50"
+                      >
+                        <div className="text-3xl">🚚</div>
+                        <p className="mt-3 text-lg font-bold text-slate-900">
+                          Bạn muốn ship hàng đến bạn
+                        </p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Nhập địa chỉ để BTC liên hệ và xử lý giao hàng.
+                        </p>
+                      </button>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedSlots.map((slot) => (
-                        <label
-                          key={slot.id}
-                          className={`block cursor-pointer rounded-xl border p-4 transition ${
-                            form.pickup_slot_id === slot.id
-                              ? "border-blue-500 bg-white ring-2 ring-blue-100"
-                              : "border-slate-200 bg-white hover:border-blue-300"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="radio"
-                              name="pickup_slot"
-                              value={slot.id}
-                              checked={form.pickup_slot_id === slot.id}
-                              onChange={(e) =>
-                                updateForm(
-                                  "pickup_slot_id",
-                                  e.target.value
-                                )
-                              }
-                              className="mt-1 h-5 w-5"
-                            />
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          delivery_method: "",
+                        }))
+                      }
+                      className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                    >
+                      ← Chọn lại hình thức nhận đồ
+                    </button>
 
-                            <div>
-                              <p className="font-bold text-slate-900">
-                                {slot.pickup_location}
-                              </p>
-                              <p className="mt-1 text-slate-700">
-                                Ngày:{" "}
-                                <span className="font-semibold">
-                                  {formatDate(slot.pickup_date)}
-                                </span>
-                              </p>
-                              <p className="mt-1 text-slate-700">
-                                Khung giờ:{" "}
-                                <span className="font-semibold">
-                                  {formatTime(slot.pickup_start_time)} -{" "}
-                                  {formatTime(slot.pickup_end_time)}
-                                </span>
-                              </p>
-                            </div>
-                          </div>
+                    <div>
+                      <p className="mb-2 text-sm font-semibold text-slate-500">
+                        Hình thức nhận
+                      </p>
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 font-bold text-slate-900">
+                        {form.delivery_method === "SHIP"
+                          ? "🚚 Ship hàng đến bạn"
+                          : "🏠 Đến lấy trực tiếp"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-lg font-bold text-slate-800">
+                        Họ và tên
+                      </label>
+                      <input
+                        type="text"
+                        value={form.full_name}
+                        onChange={(e) => updateForm("full_name", e.target.value)}
+                        placeholder="Nguyễn Văn A"
+                        className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-lg font-bold text-slate-800">
+                        Số điện thoại
+                      </label>
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={(e) => updateForm("phone", e.target.value)}
+                        placeholder="0912345678"
+                        className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+
+                    {form.delivery_method === "PICKUP" ? (
+                      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                        <label className="mb-2 block text-lg font-bold text-slate-800">
+                          Chọn lịch nhận đồ
                         </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <p className="mb-4 text-sm text-slate-600">
+                          Bạn chỉ có thể chọn ngày, địa điểm và khung giờ do BTC đã mở.
+                        </p>
+
+                        {selectedSlots.length === 0 ? (
+                          <div className="rounded-xl bg-white p-4 text-slate-500">
+                            Sản phẩm này hiện chưa có lịch nhận đồ.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {selectedSlots.map((slot) => (
+                              <label
+                                key={slot.id}
+                                className={`block cursor-pointer rounded-xl border p-4 transition ${
+                                  form.pickup_slot_id === slot.id
+                                    ? "border-blue-500 bg-white ring-2 ring-blue-100"
+                                    : "border-slate-200 bg-white hover:border-blue-300"
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <input
+                                    type="radio"
+                                    name="pickup_slot"
+                                    value={slot.id}
+                                    checked={form.pickup_slot_id === slot.id}
+                                    onChange={(e) =>
+                                      updateForm("pickup_slot_id", e.target.value)
+                                    }
+                                    className="mt-1 h-5 w-5"
+                                  />
+                                  <div>
+                                    <p className="font-bold text-slate-900">
+                                      {slot.pickup_location}
+                                    </p>
+                                    <p className="mt-1 text-slate-700">
+                                      Ngày: <span className="font-semibold">{formatDate(slot.pickup_date)}</span>
+                                    </p>
+                                    <p className="mt-1 text-slate-700">
+                                      Khung giờ: <span className="font-semibold">{formatTime(slot.pickup_start_time)} - {formatTime(slot.pickup_end_time)}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="mb-2 block text-lg font-bold text-slate-800">
+                          Địa chỉ nhận hàng
+                        </label>
+                        <textarea
+                          value={form.shipping_address}
+                          onChange={(e) => updateForm("shipping_address", e.target.value)}
+                          placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                          rows={4}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <button
                 type="button"
-                disabled={submitting || selectedSlots.length === 0 || !form.pickup_slot_id}
+                disabled={
+                  submitting ||
+                  !form.delivery_method ||
+                  !form.full_name.trim() ||
+                  !form.phone.trim() ||
+                  (form.delivery_method === "PICKUP" &&
+                    (!form.pickup_slot_id || selectedSlots.length === 0)) ||
+                  (form.delivery_method === "SHIP" && !form.shipping_address.trim())
+                }
                 onClick={submitRequest}
                 className="mt-8 w-full rounded-2xl bg-blue-600 px-5 py-4 text-lg font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
