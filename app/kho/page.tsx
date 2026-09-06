@@ -70,12 +70,44 @@ export default function KhoPage() {
   const [viewMode, setViewMode] = useState<"1" | "2">("2");
 
   useEffect(() => {
-    loadData();
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const refreshData = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        console.log("🔄 Kho Realtime: có thay đổi, đang tải lại...");
+        void loadData();
+      }, 200);
+    };
+
+    void loadData();
 
     const savedViewMode = window.localStorage.getItem("kho-view-mode");
     if (savedViewMode === "1" || savedViewMode === "2") {
       setViewMode(savedViewMode);
     }
+
+    // Không subscribe payload của requests để tránh lộ tên/SĐT cho người chưa đăng nhập.
+    channel = supabase
+      .channel("public-kho-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "items" }, refreshData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pickup_slots" }, refreshData)
+      .subscribe((status) => {
+        console.log("📡 Kho Realtime status:", status);
+      });
+
+    // Fallback 3 giây để số lượng còn lại cập nhật sau khi có đăng ký.
+    pollTimer = setInterval(() => {
+      void loadData();
+    }, 3000);
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      if (pollTimer) clearInterval(pollTimer);
+      if (channel) void supabase.removeChannel(channel);
+    };
   }, []);
 
   async function loadData() {
