@@ -78,7 +78,7 @@ export default function KhoPage() {
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
         console.log("🔄 Kho Realtime: có thay đổi, đang tải lại...");
-        void loadData();
+        void loadData(true);
       }, 200);
     };
 
@@ -100,7 +100,7 @@ export default function KhoPage() {
 
     // Fallback 3 giây để số lượng còn lại cập nhật sau khi có đăng ký.
     pollTimer = setInterval(() => {
-      void loadData();
+      void loadData(true);
     }, 3000);
 
     return () => {
@@ -110,9 +110,9 @@ export default function KhoPage() {
     };
   }, []);
 
-  async function loadData() {
+  async function loadData(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError("");
 
       const [itemsResult, slotsResult] = await Promise.all([
@@ -194,7 +194,7 @@ export default function KhoPage() {
           : "Không thể tải dữ liệu."
       );
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
