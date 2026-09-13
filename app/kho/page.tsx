@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Be_Vietnam_Pro } from "next/font/google";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 type Item = {
   id: string;
@@ -447,32 +454,54 @@ export default function KhoPage() {
       return bTime - aTime;
     });
 
+  const availableItemCount = items.filter(
+    (item) => getRemainingQuantity(item) > 0
+  ).length;
+
+  const pickupLocationCount = locationOptions.length;
+
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}>
+      <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <a href="/" className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-xl text-white shadow-sm">S</span>
+            <span>
+              <span className="block text-sm font-extrabold uppercase tracking-[0.16em] text-emerald-700">Trạm sạc nhà S</span>
+              <span className="block text-xs font-medium text-slate-500">Trao đi · Nhận lại · Kết nối</span>
+            </span>
+          </a>
+          <a href="/theo-doi" className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 sm:inline-flex">
+            Theo dõi đăng ký
+          </a>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/70 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-black text-slate-900">📋 Đã đăng ký rồi?</p>
+            <p className="font-extrabold text-slate-900">Đã đăng ký nhận đồ?</p>
             <p className="mt-1 text-sm text-slate-600">Nhập họ tên và số điện thoại để xem tình trạng phiếu đăng ký.</p>
           </div>
-          <a href="/theo-doi" className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">
+          <a href="/theo-doi" className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700 sm:hidden">
             Theo dõi đăng ký →
           </a>
         </div>
       </div>
-      <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="mb-10">
-          <p className="mb-3 text-sm font-bold uppercase tracking-wider text-blue-600">
-            TRẠM SẠC NHÀ S
-          </p>
-
-          <h1 className="text-5xl font-bold tracking-tight text-slate-900">
-            Kho đồ
-          </h1>
-
-          <p className="mt-4 text-xl text-slate-600">
-            Xem các món đồ còn hàng và đăng ký nhận theo lịch BTC đã mở.
-          </p>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+        <div className="relative mb-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-500 px-6 py-9 text-white shadow-xl shadow-emerald-900/10 sm:px-10 sm:py-12">
+          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10" />
+          <div className="absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-lime-300/10" />
+          <div className="relative max-w-3xl">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-emerald-100">Kho đồ sẻ chia</p>
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Tìm một món đồ<br className="hidden sm:block" /> bạn đang cần.</h1>
+            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-emerald-50 sm:text-lg">Mỗi món đồ được trao đi là một vòng đời mới được bắt đầu. Tìm kiếm, chọn lịch và đăng ký chỉ trong vài bước.</p>
+            <div className="mt-7 flex flex-wrap gap-3 text-sm">
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{items.length}</b> vật phẩm</span>
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{availableItemCount}</b> còn có thể nhận</span>
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{pickupLocationCount}</b> điểm nhận</span>
+            </div>
+          </div>
         </div>
 
         {successMessage && (
@@ -488,7 +517,7 @@ export default function KhoPage() {
         )}
 
         {!loading && items.length > 0 && (
-          <section className="mb-8 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-6">
+          <section className="mb-8 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80 md:p-6">
             <div className="flex flex-col gap-4">
               <div className="relative">
                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl">
@@ -499,7 +528,7 @@ export default function KhoPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Tìm theo tên, mã sản phẩm, danh mục..."
-                  className="w-full rounded-2xl border border-slate-300 bg-white py-4 pl-12 pr-4 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pl-12 pr-4 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
 
@@ -507,7 +536,7 @@ export default function KhoPage() {
                 <select
                   value={stockFilter}
                   onChange={(e) => setStockFilter(e.target.value as "all" | "available" | "out")}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 >
                   <option value="all">Tất cả sản phẩm</option>
                   <option value="available">Còn hàng</option>
@@ -517,7 +546,7 @@ export default function KhoPage() {
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 >
                   <option value="all">Tất cả địa điểm</option>
                   {locationOptions.map((location) => (
@@ -534,7 +563,7 @@ export default function KhoPage() {
                       e.target.value as "newest" | "name-asc" | "remaining-desc"
                     )
                   }
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 >
                   <option value="newest">Mới cập nhật</option>
                   <option value="name-asc">Tên A → Z</option>
@@ -557,7 +586,7 @@ export default function KhoPage() {
                     }}
                     className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                       viewMode === "1"
-                        ? "bg-blue-600 text-white shadow-sm"
+                        ? "bg-emerald-600 text-white shadow-sm"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
@@ -573,7 +602,7 @@ export default function KhoPage() {
                     }}
                     className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                       viewMode === "2"
-                        ? "bg-blue-600 text-white shadow-sm"
+                        ? "bg-emerald-600 text-white shadow-sm"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
@@ -650,7 +679,7 @@ export default function KhoPage() {
                 setSortOption("newest");
                 setOnlyAvailable(false);
               }}
-              className="mt-6 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+              className="mt-6 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700"
             >
               Xóa bộ lọc
             </button>
@@ -670,7 +699,7 @@ export default function KhoPage() {
               return (
                 <div
                   key={item.id}
-                  className={`overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ${
+                  className={`group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/80 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10 ${
                     viewMode === "1" ? "lg:flex" : ""
                   }`}
                 >
@@ -683,7 +712,7 @@ export default function KhoPage() {
                       <img
                         src={item.image_url}
                         alt={item.name}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
                     ) : (
                       <span className="text-lg text-slate-400">
@@ -694,7 +723,7 @@ export default function KhoPage() {
 
                   <div className={`p-6 ${viewMode === "1" ? "lg:flex-1" : ""}`}>
                     <div className="mb-4 flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600">
+                      <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-extrabold tracking-wide text-emerald-700">
                         {item.item_code ?? "MÃ ĐỒ"}
                       </span>
 
@@ -713,7 +742,7 @@ export default function KhoPage() {
                       </span>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-slate-900">
+                    <h2 className="text-2xl font-extrabold leading-snug text-slate-900">
                       {item.name}
                     </h2>
 
@@ -783,7 +812,7 @@ export default function KhoPage() {
                       );
                     })()}
 
-                    <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
                       <p className="font-bold text-slate-900">
                         Lịch nhận đồ
                       </p>
@@ -823,9 +852,9 @@ getRemainingQuantity(item) <= 0
                       onClick={() => openRegister(item)}
                       title={getRemainingQuantity(item) <= 0 ? "Sản phẩm đã hết hàng" : undefined}
                       aria-label={getRemainingQuantity(item) <= 0 ? "Sản phẩm đã hết hàng" : "Lấy đồ"}
-                      className={`mt-6 w-full rounded-2xl px-5 py-4 text-lg font-bold transition ${
-                        available
-                          ? "bg-blue-600 text-white hover:bg-blue-700"
+                      className={`mt-6 w-full rounded-2xl px-5 py-4 text-base font-extrabold transition ${
+                        available && getItemSlots(item.id).length > 0
+                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700"
                           : "cursor-not-allowed bg-slate-100 text-slate-400"
                       }`}
                     >
@@ -844,8 +873,8 @@ getRemainingQuantity(item) <= 0
       </div>
 
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
             <div className="p-8">
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>
@@ -888,7 +917,7 @@ getRemainingQuantity(item) <= 0
                             delivery_method: "PICKUP",
                           }))
                         }
-                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-blue-500 hover:bg-blue-50"
+                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
                       >
                         <div className="text-3xl">🏠</div>
                         <p className="mt-3 text-lg font-bold text-slate-900">
@@ -908,7 +937,7 @@ getRemainingQuantity(item) <= 0
                             pickup_slot_id: "",
                           }))
                         }
-                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-blue-500 hover:bg-blue-50"
+                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
                       >
                         <div className="text-3xl">🚚</div>
                         <p className="mt-3 text-lg font-bold text-slate-900">
@@ -930,7 +959,7 @@ getRemainingQuantity(item) <= 0
                           delivery_method: "",
                         }))
                       }
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                      className="text-sm font-semibold text-emerald-700 hover:text-emerald-800"
                     >
                       ← Chọn lại hình thức nhận đồ
                     </button>
@@ -939,7 +968,7 @@ getRemainingQuantity(item) <= 0
                       <p className="mb-2 text-sm font-semibold text-slate-500">
                         Hình thức nhận
                       </p>
-                      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 font-bold text-slate-900">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 font-bold text-slate-900">
                         {form.delivery_method === "SHIP"
                           ? "🚚 Ship hàng đến bạn"
                           : "🏠 Đến lấy trực tiếp"}
@@ -955,7 +984,7 @@ getRemainingQuantity(item) <= 0
                         value={form.full_name}
                         onChange={(e) => updateForm("full_name", e.target.value)}
                         placeholder="Nguyễn Văn A"
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                       />
                     </div>
 
@@ -968,12 +997,12 @@ getRemainingQuantity(item) <= 0
                         value={form.phone}
                         onChange={(e) => updateForm("phone", e.target.value)}
                         placeholder="0912345678"
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                       />
                     </div>
 
                     {form.delivery_method === "PICKUP" ? (
-                      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
                         <label className="mb-2 block text-lg font-bold text-slate-800">
                           Chọn lịch nhận đồ
                         </label>
@@ -992,8 +1021,8 @@ getRemainingQuantity(item) <= 0
                                 key={slot.id}
                                 className={`block cursor-pointer rounded-xl border p-4 transition ${
                                   form.pickup_slot_id === slot.id
-                                    ? "border-blue-500 bg-white ring-2 ring-blue-100"
-                                    : "border-slate-200 bg-white hover:border-blue-300"
+                                    ? "border-emerald-500 bg-white ring-2 ring-emerald-100"
+                                    : "border-slate-200 bg-white hover:border-emerald-300"
                                 }`}
                               >
                                 <div className="flex items-start gap-3">
@@ -1034,7 +1063,7 @@ getRemainingQuantity(item) <= 0
                           onChange={(e) => updateForm("shipping_address", e.target.value)}
                           placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                           rows={4}
-                          className="w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                         />
                       </div>
                     )}
@@ -1054,7 +1083,7 @@ getRemainingQuantity(item) <= 0
                   (form.delivery_method === "SHIP" && !form.shipping_address.trim())
                 }
                 onClick={submitRequest}
-                className="mt-8 w-full rounded-2xl bg-blue-600 px-5 py-4 text-lg font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-8 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               >
                 {submitting
                   ? "Đang đăng ký..."
