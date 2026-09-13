@@ -269,6 +269,7 @@ export default function BtcPage() {
   const [itemFormError, setItemFormError] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageInputKey, setImageInputKey] = useState(0);
 
   function getItemRequestCount(itemId: string) {
     return requests.filter(
@@ -735,6 +736,7 @@ export default function BtcPage() {
     ]);
     setImageFile(null);
     setImagePreview("");
+    setImageInputKey((current) => current + 1);
     setError("");
     setMessage("");
     setItemFormError("");
@@ -763,6 +765,7 @@ export default function BtcPage() {
 
     setImageFile(null);
     setImagePreview(item.image_url || "");
+    setImageInputKey((current) => current + 1);
     setError("");
     setMessage("");
     setItemFormError("");
@@ -811,7 +814,22 @@ export default function BtcPage() {
     setPickupSlots([]);
     setImageFile(null);
     setImagePreview("");
+    setImageInputKey((current) => current + 1);
     setItemFormError("");
+  }
+
+  function removeItemImage() {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(null);
+    setImagePreview("");
+    setImageInputKey((current) => current + 1);
+    setItemForm((current) => ({
+      ...current,
+      image_url: "",
+    }));
   }
 
   async function saveItem() {
@@ -2109,6 +2127,7 @@ ${errorMessage}`);
 
                   <div className="mt-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4">
                     <input
+                      key={imageInputKey}
                       type="file"
                       accept="image/*"
                       disabled={savingItem}
@@ -2117,6 +2136,9 @@ ${errorMessage}`);
                         setImageFile(file);
 
                         if (file) {
+                          if (imagePreview.startsWith("blob:")) {
+                            URL.revokeObjectURL(imagePreview);
+                          }
                           const previewUrl = URL.createObjectURL(file);
                           setImagePreview(previewUrl);
                         }
@@ -2130,12 +2152,28 @@ ${errorMessage}`);
                     </p>
 
                     {imagePreview && (
-                      <div className="mt-4">
+                      <div className="relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
                         <img
                           src={imagePreview}
                           alt="Xem trước ảnh sản phẩm"
-                          className="w-full max-h-64 object-contain rounded-xl border border-slate-200 bg-white"
+                          className="max-h-64 w-full object-contain"
                         />
+                        <button
+                          type="button"
+                          onClick={removeItemImage}
+                          disabled={savingItem}
+                          aria-label="Xóa ảnh sản phẩm"
+                          title="Xóa ảnh"
+                          className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white/95 px-3 py-2 text-sm font-bold text-red-600 shadow-md backdrop-blur transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="text-lg leading-none"
+                          >
+                            ×
+                          </span>
+                          Xóa ảnh
+                        </button>
                       </div>
                     )}
                   </div>
