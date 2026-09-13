@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Be_Vietnam_Pro } from "next/font/google";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 type Profile = {
   id: string;
@@ -102,10 +109,14 @@ function timeToMinutes(value: string | null | undefined) {
 }
 
 export default function BtcPage() {
+  const [activeTab, setActiveTab] = useState<"requests" | "items">("requests");
+  const [itemSearch, setItemSearch] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
-  const [slotsByItem, setSlotsByItem] = useState<Record<string, PickupSlot[]>>({});
+  const [slotsByItem, setSlotsByItem] = useState<Record<string, PickupSlot[]>>(
+    {},
+  );
   const [slotsById, setSlotsById] = useState<Record<string, PickupSlot>>({});
 
   const [loading, setLoading] = useState(true);
@@ -115,7 +126,9 @@ export default function BtcPage() {
 
   // Bộ lọc phiếu BTC
   const [requestStatusFilter, setRequestStatusFilter] = useState("PENDING");
-  const [requestDeliveryFilter, setRequestDeliveryFilter] = useState<"ALL" | "PICKUP" | "SHIP">("ALL");
+  const [requestDeliveryFilter, setRequestDeliveryFilter] = useState<
+    "ALL" | "PICKUP" | "SHIP"
+  >("ALL");
   const [requestLocationFilter, setRequestLocationFilter] = useState("");
   const [requestDateFilter, setRequestDateFilter] = useState("");
   const [requestTimeFilter, setRequestTimeFilter] = useState("");
@@ -126,10 +139,10 @@ export default function BtcPage() {
         .map((request) =>
           request.pickup_slot_id
             ? slotsById[request.pickup_slot_id]?.pickup_location
-            : request.pickup_location
+            : request.pickup_location,
         )
-        .filter(Boolean) as string[]
-    )
+        .filter(Boolean) as string[],
+    ),
   ).sort();
 
   const requestDates = Array.from(
@@ -138,10 +151,10 @@ export default function BtcPage() {
         .map((request) =>
           request.pickup_slot_id
             ? slotsById[request.pickup_slot_id]?.pickup_date
-            : request.pickup_date
+            : request.pickup_date,
         )
-        .filter(Boolean) as string[]
-    )
+        .filter(Boolean) as string[],
+    ),
   ).sort();
 
   const requestTimeRanges = Array.from(
@@ -154,11 +167,11 @@ export default function BtcPage() {
 
           if (!slot) return "";
           return `${normalizeStoredTime(slot.pickup_start_time)}-${normalizeStoredTime(
-            slot.pickup_end_time
+            slot.pickup_end_time,
           )}`;
         })
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   ).sort();
 
   function getRequestSlot(request: Request) {
@@ -169,18 +182,12 @@ export default function BtcPage() {
 
   function getRequestLocation(request: Request) {
     return (
-      getRequestSlot(request)?.pickup_location ||
-      request.pickup_location ||
-      ""
+      getRequestSlot(request)?.pickup_location || request.pickup_location || ""
     );
   }
 
   function getRequestDate(request: Request) {
-    return (
-      getRequestSlot(request)?.pickup_date ||
-      request.pickup_date ||
-      ""
-    );
+    return getRequestSlot(request)?.pickup_date || request.pickup_date || "";
   }
 
   function getRequestTimeRange(request: Request) {
@@ -188,7 +195,7 @@ export default function BtcPage() {
     if (!slot) return "";
 
     return `${normalizeStoredTime(slot.pickup_start_time)}-${normalizeStoredTime(
-      slot.pickup_end_time
+      slot.pickup_end_time,
     )}`;
   }
 
@@ -214,10 +221,7 @@ export default function BtcPage() {
       return false;
     }
 
-    if (
-      requestDateFilter &&
-      getRequestDate(request) !== requestDateFilter
-    ) {
+    if (requestDateFilter && getRequestDate(request) !== requestDateFilter) {
       return false;
     }
 
@@ -268,9 +272,7 @@ export default function BtcPage() {
 
   function getItemRequestCount(itemId: string) {
     return requests.filter(
-      (request) =>
-        request.item_id === itemId &&
-        request.status !== "CANCELLED"
+      (request) => request.item_id === itemId && request.status !== "CANCELLED",
     ).length;
   }
 
@@ -278,6 +280,16 @@ export default function BtcPage() {
     const total = Number(item.quantity ?? 1);
     return Math.max(0, total - getItemRequestCount(item.id));
   }
+
+  const filteredItems = items.filter((item) => {
+    const keyword = itemSearch.trim().toLocaleLowerCase("vi");
+    if (!keyword) return true;
+    return [item.item_code, item.name, item.category, item.condition]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("vi")
+      .includes(keyword);
+  });
 
   // =========================================================
   // TẢI DỮ LIỆU
@@ -310,12 +322,11 @@ export default function BtcPage() {
       // 2. Lấy profile
       // -------------------------------------------------------
 
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("id, full_name, student_id, role")
-          .eq("id", user.id)
-          .single();
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, student_id, role")
+        .eq("id", user.id)
+        .single();
 
       if (profileError) {
         throw profileError;
@@ -344,15 +355,14 @@ export default function BtcPage() {
       // 4. Lấy danh sách đồ
       // -------------------------------------------------------
 
-      const { data: itemsData, error: itemsError } =
-        await supabase
-          .from("items")
-          .select(
-            "id, item_code, name, category, condition, description, image_url, pickup_location, pickup_date, pickup_start_time, pickup_end_time, status, quantity"
-          )
-          .order("created_at", {
-            ascending: false,
-          });
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("items")
+        .select(
+          "id, item_code, name, category, condition, description, image_url, pickup_location, pickup_date, pickup_start_time, pickup_end_time, status, quantity",
+        )
+        .order("created_at", {
+          ascending: false,
+        });
 
       if (itemsError) {
         throw itemsError;
@@ -366,7 +376,7 @@ export default function BtcPage() {
       const { data: slotsData, error: slotsError } = await supabase
         .from("pickup_slots")
         .select(
-          "id, item_id, pickup_location, pickup_date, pickup_start_time, pickup_end_time, is_active"
+          "id, item_id, pickup_location, pickup_date, pickup_start_time, pickup_end_time, is_active",
         )
         .eq("is_active", true)
         .order("pickup_date", { ascending: true })
@@ -389,10 +399,7 @@ export default function BtcPage() {
       // 6. Lấy phiếu nhận đồ
       // -------------------------------------------------------
 
-      const {
-        data: requestData,
-        error: requestError,
-      } = await supabase
+      const { data: requestData, error: requestError } = await supabase
         .from("requests")
         .select(
           `
@@ -418,7 +425,7 @@ export default function BtcPage() {
           cancelled_by,
           cancelled_at,
           cancelled_by_name
-        `
+        `,
         )
         .order("created_at", {
           ascending: false,
@@ -438,10 +445,7 @@ export default function BtcPage() {
     } catch (err: any) {
       console.error("BTC load error:", err);
 
-      setError(
-        err?.message ||
-          "Không tải được dữ liệu BTC."
-      );
+      setError(err?.message || "Không tải được dữ liệu BTC.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -495,9 +499,7 @@ export default function BtcPage() {
         }
 
         return current.map((request) =>
-          request.id === id
-            ? ({ ...request, ...row } as Request)
-            : request
+          request.id === id ? ({ ...request, ...row } as Request) : request,
         );
       });
     };
@@ -506,9 +508,7 @@ export default function BtcPage() {
       const id = typeof row.id === "string" ? row.id : "";
       if (!id) return;
 
-      setRequests((current) =>
-        current.filter((request) => request.id !== id)
-      );
+      setRequests((current) => current.filter((request) => request.id !== id));
     };
 
     async function setupRealtime() {
@@ -553,7 +553,7 @@ export default function BtcPage() {
 
             // Sau đó tải lại để lấy dữ liệu đầy đủ/đồng bộ tuyệt đối.
             refreshData();
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -565,12 +565,10 @@ export default function BtcPage() {
           (payload) => {
             console.log("🟡 BTC Realtime REQUEST UPDATE:", payload);
 
-            updateRequestImmediately(
-              payload.new as Record<string, unknown>
-            );
+            updateRequestImmediately(payload.new as Record<string, unknown>);
 
             refreshData();
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -582,12 +580,10 @@ export default function BtcPage() {
           (payload) => {
             console.log("🔴 BTC Realtime REQUEST DELETE:", payload);
 
-            removeRequestImmediately(
-              payload.old as Record<string, unknown>
-            );
+            removeRequestImmediately(payload.old as Record<string, unknown>);
 
             refreshData();
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -599,7 +595,7 @@ export default function BtcPage() {
           (payload) => {
             console.log("📦 BTC Realtime ITEMS:", payload);
             refreshData();
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -611,7 +607,7 @@ export default function BtcPage() {
           (payload) => {
             console.log("📅 BTC Realtime PICKUP SLOTS:", payload);
             refreshData();
-          }
+          },
         )
         .subscribe((status, err) => {
           console.log("📡 BTC Realtime status:", status);
@@ -623,7 +619,7 @@ export default function BtcPage() {
           if (status === "SUBSCRIBED") {
             console.log("✅ BTC Realtime đã kết nối thành công!");
             console.log(
-              "🟢 BTC Realtime đang nghe INSERT/UPDATE/DELETE của requests."
+              "🟢 BTC Realtime đang nghe INSERT/UPDATE/DELETE của requests.",
             );
           }
 
@@ -658,7 +654,7 @@ export default function BtcPage() {
       }, 3000);
 
       console.log(
-        "🔁 BTC fallback refresh đã bật: kiểm tra dữ liệu mỗi 3 giây."
+        "🔁 BTC fallback refresh đã bật: kiểm tra dữ liệu mỗi 3 giây.",
       );
     }
 
@@ -697,8 +693,7 @@ export default function BtcPage() {
       return false;
     }
 
-    const { data: isBtc, error: rpcError } =
-      await supabase.rpc("is_btc");
+    const { data: isBtc, error: rpcError } = await supabase.rpc("is_btc");
 
     if (rpcError) {
       console.error("BTC permission check error:", rpcError);
@@ -775,7 +770,7 @@ export default function BtcPage() {
     const { data, error: slotsError } = await supabase
       .from("pickup_slots")
       .select(
-        "id, item_id, pickup_location, pickup_date, pickup_start_time, pickup_end_time, is_active"
+        "id, item_id, pickup_location, pickup_date, pickup_start_time, pickup_end_time, is_active",
       )
       .eq("item_id", item.id)
       .eq("is_active", true)
@@ -791,7 +786,7 @@ export default function BtcPage() {
           ...slot,
           pickup_start_time: normalizeStoredTime(slot.pickup_start_time),
           pickup_end_time: normalizeStoredTime(slot.pickup_end_time),
-        }))
+        })),
       );
     } else {
       setPickupSlots([
@@ -852,7 +847,7 @@ export default function BtcPage() {
           slot.pickup_location ||
           slot.pickup_date ||
           slot.pickup_start_time ||
-          slot.pickup_end_time
+          slot.pickup_end_time,
       );
 
     if (cleanedSlots.length === 0) {
@@ -870,7 +865,7 @@ export default function BtcPage() {
         !slot.pickup_end_time
       ) {
         setItemFormError(
-          `Lịch số ${index + 1}: vui lòng nhập đủ địa điểm, ngày và giờ.`
+          `Lịch số ${index + 1}: vui lòng nhập đủ địa điểm, ngày và giờ.`,
         );
         return;
       }
@@ -880,14 +875,14 @@ export default function BtcPage() {
 
       if (!isValid24HourTime(startTime) || !isValid24HourTime(endTime)) {
         setItemFormError(
-          `Lịch số ${index + 1}: giờ phải có dạng 24 giờ HH:mm, ví dụ 07:30 hoặc 14:00.`
+          `Lịch số ${index + 1}: giờ phải có dạng 24 giờ HH:mm, ví dụ 07:30 hoặc 14:00.`,
         );
         return;
       }
 
       if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
         setItemFormError(
-          `Lịch số ${index + 1}: giờ kết thúc phải sau giờ bắt đầu.`
+          `Lịch số ${index + 1}: giờ kết thúc phải sau giờ bắt đầu.`,
         );
         return;
       }
@@ -936,7 +931,9 @@ export default function BtcPage() {
 
       const firstSlot = {
         ...cleanedSlots[0],
-        pickup_start_time: normalizeStoredTime(cleanedSlots[0].pickup_start_time),
+        pickup_start_time: normalizeStoredTime(
+          cleanedSlots[0].pickup_start_time,
+        ),
         pickup_end_time: normalizeStoredTime(cleanedSlots[0].pickup_end_time),
       };
 
@@ -1009,7 +1006,7 @@ export default function BtcPage() {
       setMessage(
         editingItem
           ? "Đã cập nhật sản phẩm và toàn bộ lịch nhận đồ."
-          : "Đã thêm sản phẩm và lịch nhận đồ vào kho."
+          : "Đã thêm sản phẩm và lịch nhận đồ vào kho.",
       );
 
       closeItemForm();
@@ -1017,8 +1014,7 @@ export default function BtcPage() {
     } catch (err: any) {
       console.error("Save item error:", err);
 
-      const errorMessage =
-        err?.message || "Không thể lưu sản phẩm.";
+      const errorMessage = err?.message || "Không thể lưu sản phẩm.";
 
       setItemFormError(errorMessage);
       setError(errorMessage);
@@ -1035,7 +1031,7 @@ ${errorMessage}`);
     }
 
     const confirmed = window.confirm(
-      `Bạn có chắc muốn xóa "${item.name}" (${item.item_code}) không?`
+      `Bạn có chắc muốn xóa "${item.name}" (${item.item_code}) không?`,
     );
 
     if (!confirmed) return;
@@ -1058,7 +1054,7 @@ ${errorMessage}`);
       console.error("Delete item error:", err);
       setError(
         err?.message ||
-          "Không thể xóa sản phẩm. Nếu sản phẩm đã có phiếu nhận, hãy giữ lại sản phẩm thay vì xóa."
+          "Không thể xóa sản phẩm. Nếu sản phẩm đã có phiếu nhận, hãy giữ lại sản phẩm thay vì xóa.",
       );
     } finally {
       setProcessingId(null);
@@ -1082,7 +1078,7 @@ ${errorMessage}`);
     try {
       const { error: rpcError } = await supabase.rpc(
         "process_pickup_request_by_btc",
-        { p_request_id: request.id }
+        { p_request_id: request.id },
       );
 
       if (rpcError) throw rpcError;
@@ -1090,7 +1086,7 @@ ${errorMessage}`);
       setMessage(
         request.status === "PENDING"
           ? "Đã duyệt phiếu thành công."
-          : "Đã xác nhận giao đồ thành công!"
+          : "Đã xác nhận giao đồ thành công!",
       );
       await loadData();
     } catch (err: any) {
@@ -1118,7 +1114,7 @@ ${errorMessage}`);
     try {
       const { error: rpcError } = await supabase.rpc(
         "cancel_pickup_request_by_btc",
-        { p_request_id: request.id }
+        { p_request_id: request.id },
       );
 
       if (rpcError) throw rpcError;
@@ -1150,9 +1146,7 @@ ${errorMessage}`);
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="rounded-2xl bg-white border border-slate-200 px-8 py-6 shadow-sm">
-          <p className="text-xl text-slate-600">
-            Đang tải trang BTC...
-          </p>
+          <p className="text-xl text-slate-600">Đang tải trang BTC...</p>
         </div>
       </main>
     );
@@ -1179,33 +1173,46 @@ ${errorMessage}`);
   // =========================================================
 
   const waitingRequests = filteredRequests;
+  const pendingCount = requests.filter(
+    (request) => request.status === "PENDING",
+  ).length;
+  const approvedCount = requests.filter(
+    (request) => request.status === "APPROVED",
+  ).length;
+  const deliveredCount = requests.filter(
+    (request) => request.status === "DELIVERED",
+  ).length;
+  const availableCount = items.filter(
+    (item) => getItemRemaining(item) > 0,
+  ).length;
 
   // =========================================================
   // GIAO DIỆN
   // =========================================================
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-6 py-10">
-
+    <main
+      className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}
+    >
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         {/* HEADER */}
 
-        <div className="flex items-start justify-between gap-6 mb-8">
+        <div className="mb-8 flex items-start justify-between gap-6 rounded-[2rem] bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-500 p-7 text-white shadow-xl shadow-emerald-900/10 sm:p-9">
           <div>
-            <p className="text-blue-600 font-bold text-lg">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-100">
               TRẠM SẠC NHÀ S
             </p>
 
-            <h1 className="text-5xl font-black text-slate-900 mt-2">
-              Trang BTC
+            <h1 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Trung tâm quản lý BTC
             </h1>
 
-            <p className="text-slate-600 text-lg mt-3">
-              Quản lý việc giao và nhận đồ.
+            <p className="mt-3 text-base font-medium text-emerald-50 sm:text-lg">
+              Quản lý phiếu nhận, kho vật phẩm và lịch giao đồ tại một nơi.
             </p>
 
             {profile?.full_name && (
-              <p className="text-blue-700 font-semibold mt-2">
+              <p className="mt-3 font-semibold text-white">
                 Xin chào, {profile.full_name}
               </p>
             )}
@@ -1214,11 +1221,72 @@ ${errorMessage}`);
           <button
             type="button"
             onClick={logout}
-            className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 hover:bg-slate-100"
+            className="rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"
           >
             Đăng xuất
           </button>
         </div>
+
+        <section className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            {
+              label: "Chờ duyệt",
+              value: pendingCount,
+              tone: "text-amber-600",
+              dot: "bg-amber-400",
+            },
+            {
+              label: "Đã duyệt",
+              value: approvedCount,
+              tone: "text-emerald-600",
+              dot: "bg-emerald-500",
+            },
+            {
+              label: "Đã giao",
+              value: deliveredCount,
+              tone: "text-sky-600",
+              dot: "bg-sky-500",
+            },
+            {
+              label: "Còn trong kho",
+              value: availableCount,
+              tone: "text-teal-600",
+              dot: "bg-teal-500",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                <span className={`h-2.5 w-2.5 rounded-full ${stat.dot}`} />
+                {stat.label}
+              </div>
+              <p className={`mt-2 text-3xl font-extrabold ${stat.tone}`}>
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <nav className="sticky top-3 z-30 mb-8 flex gap-2 rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-sm backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setActiveTab("requests")}
+            className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition sm:flex-none sm:px-6 ${activeTab === "requests" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+          >
+            Phiếu nhận đồ{" "}
+            <span className="ml-1 opacity-75">({requests.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("items")}
+            className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition sm:flex-none sm:px-6 ${activeTab === "items" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+          >
+            Kho vật phẩm{" "}
+            <span className="ml-1 opacity-75">({items.length})</span>
+          </button>
+        </nav>
 
         {/* THÔNG BÁO */}
 
@@ -1238,685 +1306,679 @@ ${errorMessage}`);
             PHIẾU ĐANG CHỜ GIAO
         ===================================================== */}
 
-        <section className="mb-12">
+        {activeTab === "requests" && (
+          <section className="mb-12">
+            <div className="flex items-end justify-between gap-5 mb-5">
+              <div>
+                <h2 className="text-3xl font-extrabold text-slate-900">
+                  Quản lý phiếu nhận đồ
+                </h2>
 
-          <div className="flex items-end justify-between gap-5 mb-5">
-            <div>
-              <h2 className="text-3xl font-black text-slate-900">
-                Quản lý phiếu nhận đồ
-              </h2>
+                <p className="text-slate-600 mt-2">
+                  Lọc nhanh theo trạng thái, hình thức nhận, địa điểm, ngày và
+                  khung giờ.
+                </p>
+              </div>
 
-              <p className="text-slate-600 mt-2">
-                Lọc nhanh theo trạng thái, hình thức nhận, địa điểm, ngày và khung giờ.
-              </p>
+              <div className="rounded-full bg-orange-100 text-orange-700 px-5 py-3 font-bold whitespace-nowrap">
+                {waitingRequests.length} phiếu
+              </div>
             </div>
 
-            <div className="rounded-full bg-orange-100 text-orange-700 px-5 py-3 font-bold whitespace-nowrap">
-              {waitingRequests.length} phiếu
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <label className="block">
-                <span className="font-semibold text-slate-700">
-                  Trạng thái
-                </span>
-                <select
-                  value={requestStatusFilter}
-                  onChange={(e) => setRequestStatusFilter(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="PENDING">Chờ giao</option>
-                  <option value="APPROVED">Đã duyệt</option>
-                  <option value="DELIVERED">Đã giao</option>
-                  <option value="CANCELLED">Đã hủy</option>
-                  <option value="ALL">Tất cả</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="font-semibold text-slate-700">
-                  Hình thức nhận
-                </span>
-                <select
-                  value={requestDeliveryFilter}
-                  onChange={(e) =>
-                    setRequestDeliveryFilter(
-                      e.target.value as "ALL" | "PICKUP" | "SHIP"
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="ALL">Tất cả</option>
-                  <option value="PICKUP">🏠 Lấy trực tiếp</option>
-                  <option value="SHIP">🚚 Ship hàng</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="font-semibold text-slate-700">
-                  Địa điểm
-                </span>
-                <select
-                  value={requestLocationFilter}
-                  onChange={(e) => setRequestLocationFilter(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="">Tất cả địa điểm</option>
-                  {requestLocations.map((location) => (
-                    <option key={location} value={location}>
-                      {location}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="font-semibold text-slate-700">
-                  Ngày nhận
-                </span>
-                <select
-                  value={requestDateFilter}
-                  onChange={(e) => setRequestDateFilter(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="">Tất cả ngày</option>
-                  {requestDates.map((date) => (
-                    <option key={date} value={date}>
-                      {new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="font-semibold text-slate-700">
-                  Khung giờ
-                </span>
-                <select
-                  value={requestTimeFilter}
-                  onChange={(e) => setRequestTimeFilter(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="">Tất cả khung giờ</option>
-                  {requestTimeRanges.map((range) => {
-                    const [start, end] = range.split("-");
-                    return (
-                      <option key={range} value={range}>
-                        {start} - {end}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => setRequestDeliveryFilter("ALL")}
-                className={`rounded-full px-4 py-2 text-sm font-bold border ${
-                  requestDeliveryFilter === "ALL"
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                Tất cả hình thức
-              </button>
-              <button
-                type="button"
-                onClick={() => setRequestDeliveryFilter("PICKUP")}
-                className={`rounded-full px-4 py-2 text-sm font-bold border ${
-                  requestDeliveryFilter === "PICKUP"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                🏠 Lấy trực tiếp ({requests.filter((r) => (r.delivery_method || "PICKUP") === "PICKUP").length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRequestDeliveryFilter("SHIP")}
-                className={`rounded-full px-4 py-2 text-sm font-bold border ${
-                  requestDeliveryFilter === "SHIP"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                🚚 Ship hàng ({requests.filter((r) => r.delivery_method === "SHIP").length})
-              </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-              <p className="text-sm text-slate-500">
-                Đang hiển thị{" "}
-                <span className="font-bold text-slate-800">
-                  {filteredRequests.length}
-                </span>{" "}
-                / {requests.length} phiếu
-              </p>
-
-              <button
-                type="button"
-                onClick={clearRequestFilters}
-                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Xóa bộ lọc
-              </button>
-            </div>
-          </div>
-
-          {waitingRequests.length === 0 ? (
-            <div className="rounded-2xl bg-white border border-slate-200 p-8 text-slate-500 shadow-sm">
-              Hiện không có phiếu nào đang chờ giao.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {waitingRequests.map((request) => {
-
-                const item = items.find(
-                  (currentItem) =>
-                    currentItem.id ===
-                    request.item_id
-                );
-
-                const isProcessing =
-                  processingId === request.id;
-
-                return (
-                  <div
-                    key={request.id}
-                    className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm"
+            <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <label className="block">
+                  <span className="font-semibold text-slate-700">
+                    Trạng thái
+                  </span>
+                  <select
+                    value={requestStatusFilter}
+                    onChange={(e) => setRequestStatusFilter(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
                   >
+                    <option value="PENDING">Chờ giao</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="DELIVERED">Đã giao</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                    <option value="ALL">Tất cả</option>
+                  </select>
+                </label>
 
-                    {/* MÃ ĐỒ */}
+                <label className="block">
+                  <span className="font-semibold text-slate-700">
+                    Hình thức nhận
+                  </span>
+                  <select
+                    value={requestDeliveryFilter}
+                    onChange={(e) =>
+                      setRequestDeliveryFilter(
+                        e.target.value as "ALL" | "PICKUP" | "SHIP",
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
+                  >
+                    <option value="ALL">Tất cả</option>
+                    <option value="PICKUP">🏠 Lấy trực tiếp</option>
+                    <option value="SHIP">🚚 Ship hàng</option>
+                  </select>
+                </label>
 
-                    <div className="flex items-center justify-between gap-4">
+                <label className="block">
+                  <span className="font-semibold text-slate-700">Địa điểm</span>
+                  <select
+                    value={requestLocationFilter}
+                    onChange={(e) => setRequestLocationFilter(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Tất cả địa điểm</option>
+                    {requestLocations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                      <span className="rounded-full bg-blue-50 text-blue-600 px-4 py-2 font-bold">
-                        {item?.item_code || "Không rõ mã"}
-                      </span>
+                <label className="block">
+                  <span className="font-semibold text-slate-700">
+                    Ngày nhận
+                  </span>
+                  <select
+                    value={requestDateFilter}
+                    onChange={(e) => setRequestDateFilter(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Tất cả ngày</option>
+                    {requestDates.map((date) => (
+                      <option key={date} value={date}>
+                        {new Date(`${date}T00:00:00`).toLocaleDateString(
+                          "vi-VN",
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                      <span
-                        className={`rounded-full px-4 py-2 font-semibold ${
-                          request.status === "DELIVERED"
-                            ? "bg-blue-50 text-blue-600"
+                <label className="block">
+                  <span className="font-semibold text-slate-700">
+                    Khung giờ
+                  </span>
+                  <select
+                    value={requestTimeFilter}
+                    onChange={(e) => setRequestTimeFilter(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Tất cả khung giờ</option>
+                    {requestTimeRanges.map((range) => {
+                      const [start, end] = range.split("-");
+                      return (
+                        <option key={range} value={range}>
+                          {start} - {end}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setRequestDeliveryFilter("ALL")}
+                  className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                    requestDeliveryFilter === "ALL"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  Tất cả hình thức
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequestDeliveryFilter("PICKUP")}
+                  className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                    requestDeliveryFilter === "PICKUP"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  🏠 Lấy trực tiếp (
+                  {
+                    requests.filter(
+                      (r) => (r.delivery_method || "PICKUP") === "PICKUP",
+                    ).length
+                  }
+                  )
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequestDeliveryFilter("SHIP")}
+                  className={`rounded-full px-4 py-2 text-sm font-bold border ${
+                    requestDeliveryFilter === "SHIP"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  🚚 Ship hàng (
+                  {requests.filter((r) => r.delivery_method === "SHIP").length})
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                <p className="text-sm text-slate-500">
+                  Đang hiển thị{" "}
+                  <span className="font-bold text-slate-800">
+                    {filteredRequests.length}
+                  </span>{" "}
+                  / {requests.length} phiếu
+                </p>
+
+                <button
+                  type="button"
+                  onClick={clearRequestFilters}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            </div>
+
+            {waitingRequests.length === 0 ? (
+              <div className="rounded-2xl bg-white border border-slate-200 p-8 text-slate-500 shadow-sm">
+                Hiện không có phiếu nào đang chờ giao.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {waitingRequests.map((request) => {
+                  const item = items.find(
+                    (currentItem) => currentItem.id === request.item_id,
+                  );
+
+                  const isProcessing = processingId === request.id;
+
+                  return (
+                    <div
+                      key={request.id}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      {/* MÃ ĐỒ */}
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="rounded-full bg-blue-50 text-blue-600 px-4 py-2 font-bold">
+                          {item?.item_code || "Không rõ mã"}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-4 py-2 font-semibold ${
+                            request.status === "DELIVERED"
+                              ? "bg-sky-50 text-sky-700"
+                              : request.status === "CANCELLED"
+                                ? "bg-red-50 text-red-600"
+                                : request.status === "APPROVED"
+                                  ? "bg-green-50 text-green-600"
+                                  : "bg-orange-50 text-orange-600"
+                          }`}
+                        >
+                          {request.status === "DELIVERED"
+                            ? "Đã giao"
                             : request.status === "CANCELLED"
-                              ? "bg-red-50 text-red-600"
+                              ? "Đã hủy"
                               : request.status === "APPROVED"
-                                ? "bg-green-50 text-green-600"
-                                : "bg-orange-50 text-orange-600"
-                        }`}
-                      >
-                        {request.status === "DELIVERED"
-                          ? "Đã giao"
-                          : request.status === "CANCELLED"
-                            ? "Đã hủy"
-                            : request.status === "APPROVED"
-                              ? "Đã duyệt"
-                              : "Chờ giao"}
-                      </span>
+                                ? "Đã duyệt"
+                                : "Chờ giao"}
+                        </span>
+                      </div>
 
-                    </div>
+                      {/* TÊN ĐỒ */}
 
-                    {/* TÊN ĐỒ */}
+                      <h3 className="text-2xl font-black text-slate-900 mt-6">
+                        {item?.name || "Không rõ món đồ"}
+                      </h3>
 
-                    <h3 className="text-2xl font-black text-slate-900 mt-6">
-                      {item?.name || "Không rõ món đồ"}
-                    </h3>
+                      {item?.category && (
+                        <p className="text-slate-600 mt-2">{item.category}</p>
+                      )}
 
-                    {item?.category && (
-                      <p className="text-slate-600 mt-2">
-                        {item.category}
-                      </p>
-                    )}
+                      {/* THÔNG TIN NGƯỜI NHẬN */}
 
-                    {/* THÔNG TIN NGƯỜI NHẬN */}
-
-                    <div className="mt-6 rounded-xl bg-slate-50 p-5">
-
-                      <p className="font-bold text-slate-900 mb-3">
-                        Thông tin người nhận
-                      </p>
-
-                      <p className="text-slate-700">
-                        <span className="font-semibold">
-                          Họ tên:
-                        </span>{" "}
-                        {request.full_name ||
-                          request.student_name ||
-                          "Chưa có"}
-                      </p>
-
-                      <p className="text-slate-700 mt-2">
-                        <span className="font-semibold">
-                          SĐT:
-                        </span>{" "}
-                        {request.phone ||
-                          "Chưa có"}
-                      </p>
-
-                      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                        <p className="font-bold text-slate-900">
-                          Hình thức nhận đồ
+                      <div className="mt-6 rounded-xl bg-slate-50 p-5">
+                        <p className="font-bold text-slate-900 mb-3">
+                          Thông tin người nhận
                         </p>
 
-                        {request.delivery_method === "SHIP" ? (
-                          <>
-                            <p className="text-slate-700 mt-2">
-                              🚚 <span className="font-semibold">Ship hàng</span>
-                            </p>
-                            <p className="text-slate-700 mt-2">
+                        <p className="text-slate-700">
+                          <span className="font-semibold">Họ tên:</span>{" "}
+                          {request.full_name ||
+                            request.student_name ||
+                            "Chưa có"}
+                        </p>
+
+                        <p className="text-slate-700 mt-2">
+                          <span className="font-semibold">SĐT:</span>{" "}
+                          {request.phone || "Chưa có"}
+                        </p>
+
+                        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                          <p className="font-bold text-slate-900">
+                            Hình thức nhận đồ
+                          </p>
+
+                          {request.delivery_method === "SHIP" ? (
+                            <>
+                              <p className="text-slate-700 mt-2">
+                                🚚{" "}
+                                <span className="font-semibold">Ship hàng</span>
+                              </p>
+                              <p className="text-slate-700 mt-2">
+                                <span className="font-semibold">
+                                  Địa chỉ nhận:
+                                </span>{" "}
+                                {request.shipping_address || "Chưa có"}
+                              </p>
+                              <p className="text-sm text-slate-500 mt-3">
+                                BTC liên hệ sinh viên để xử lý việc giao hàng.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-slate-700 mt-2">
+                                🏠{" "}
+                                <span className="font-semibold">
+                                  Đến lấy trực tiếp
+                                </span>
+                              </p>
+
+                              {(() => {
+                                const slot = request.pickup_slot_id
+                                  ? slotsById[request.pickup_slot_id]
+                                  : undefined;
+
+                                const location =
+                                  slot?.pickup_location ||
+                                  request.pickup_location ||
+                                  "Chưa có";
+
+                                const date =
+                                  slot?.pickup_date || request.pickup_date;
+
+                                return (
+                                  <>
+                                    <p className="text-slate-700 mt-2">
+                                      <span className="font-semibold">
+                                        Nơi lấy:
+                                      </span>{" "}
+                                      {location}
+                                    </p>
+
+                                    <p className="text-slate-700 mt-2">
+                                      <span className="font-semibold">
+                                        Ngày lấy:
+                                      </span>{" "}
+                                      {date
+                                        ? new Date(
+                                            `${date}T00:00:00`,
+                                          ).toLocaleDateString("vi-VN")
+                                        : "Chưa có"}
+                                    </p>
+
+                                    <p className="text-slate-700 mt-2">
+                                      <span className="font-semibold">
+                                        Khung giờ:
+                                      </span>{" "}
+                                      {slot
+                                        ? `${normalizeStoredTime(slot.pickup_start_time)} - ${normalizeStoredTime(slot.pickup_end_time)}`
+                                        : "Chưa có"}
+                                    </p>
+                                  </>
+                                );
+                              })()}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {(request.approved_by_name ||
+                        request.delivered_by_name ||
+                        request.cancelled_by_name) && (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="font-bold text-slate-900">
+                            Lịch sử thao tác
+                          </p>
+                          {request.approved_by_name && (
+                            <p className="text-sm text-slate-600 mt-2">
+                              ✅ Duyệt phiếu:{" "}
                               <span className="font-semibold">
-                                Địa chỉ nhận:
-                              </span>{" "}
-                              {request.shipping_address || "Chưa có"}
+                                {request.approved_by_name}
+                              </span>
+                              {request.approved_at
+                                ? ` · ${new Date(request.approved_at).toLocaleString("vi-VN")}`
+                                : ""}
                             </p>
-                            <p className="text-sm text-slate-500 mt-3">
-                              BTC liên hệ sinh viên để xử lý việc giao hàng.
+                          )}
+                          {request.delivered_by_name && (
+                            <p className="text-sm text-slate-600 mt-2">
+                              📦 Giao đồ:{" "}
+                              <span className="font-semibold">
+                                {request.delivered_by_name}
+                              </span>
+                              {request.delivered_at
+                                ? ` · ${new Date(request.delivered_at).toLocaleString("vi-VN")}`
+                                : ""}
                             </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-slate-700 mt-2">
-                              🏠 <span className="font-semibold">Đến lấy trực tiếp</span>
+                          )}
+                          {request.cancelled_by_name && (
+                            <p className="text-sm text-slate-600 mt-2">
+                              ❌ Hủy phiếu:{" "}
+                              <span className="font-semibold">
+                                {request.cancelled_by_name}
+                              </span>
+                              {request.cancelled_at
+                                ? ` · ${new Date(request.cancelled_at).toLocaleString("vi-VN")}`
+                                : ""}
                             </p>
+                          )}
+                        </div>
+                      )}
 
-                            {(() => {
-                              const slot = request.pickup_slot_id
-                                ? slotsById[request.pickup_slot_id]
-                                : undefined;
+                      {/* MÃ PHIẾU */}
 
-                              const location =
-                                slot?.pickup_location ||
-                                request.pickup_location ||
-                                "Chưa có";
-
-                              const date =
-                                slot?.pickup_date ||
-                                request.pickup_date;
-
-                              return (
-                                <>
-                                  <p className="text-slate-700 mt-2">
-                                    <span className="font-semibold">
-                                      Nơi lấy:
-                                    </span>{" "}
-                                    {location}
-                                  </p>
-
-                                  <p className="text-slate-700 mt-2">
-                                    <span className="font-semibold">
-                                      Ngày lấy:
-                                    </span>{" "}
-                                    {date
-                                      ? new Date(
-                                          `${date}T00:00:00`
-                                        ).toLocaleDateString("vi-VN")
-                                      : "Chưa có"}
-                                  </p>
-
-                                  <p className="text-slate-700 mt-2">
-                                    <span className="font-semibold">
-                                      Khung giờ:
-                                    </span>{" "}
-                                    {slot
-                                      ? `${normalizeStoredTime(slot.pickup_start_time)} - ${normalizeStoredTime(slot.pickup_end_time)}`
-                                      : "Chưa có"}
-                                  </p>
-                                </>
-                              );
-                            })()}
-                          </>
-                        )}
-                      </div>
-
-                    </div>
-
-                    {(request.approved_by_name ||
-                      request.delivered_by_name ||
-                      request.cancelled_by_name) && (
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="font-bold text-slate-900">Lịch sử thao tác</p>
-                        {request.approved_by_name && (
-                          <p className="text-sm text-slate-600 mt-2">
-                            ✅ Duyệt phiếu: <span className="font-semibold">{request.approved_by_name}</span>
-                            {request.approved_at ? ` · ${new Date(request.approved_at).toLocaleString("vi-VN")}` : ""}
-                          </p>
-                        )}
-                        {request.delivered_by_name && (
-                          <p className="text-sm text-slate-600 mt-2">
-                            📦 Giao đồ: <span className="font-semibold">{request.delivered_by_name}</span>
-                            {request.delivered_at ? ` · ${new Date(request.delivered_at).toLocaleString("vi-VN")}` : ""}
-                          </p>
-                        )}
-                        {request.cancelled_by_name && (
-                          <p className="text-sm text-slate-600 mt-2">
-                            ❌ Hủy phiếu: <span className="font-semibold">{request.cancelled_by_name}</span>
-                            {request.cancelled_at ? ` · ${new Date(request.cancelled_at).toLocaleString("vi-VN")}` : ""}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* MÃ PHIẾU */}
-
-                    <p className="text-sm text-slate-400 mt-4 break-all">
-                      Mã phiếu: {request.id}
-                    </p>
-
-                    {/* NGÀY TẠO */}
-
-                    {request.created_at && (
-                      <p className="text-sm text-slate-400 mt-1">
-                        Đăng ký lúc:{" "}
-                        {new Date(
-                          request.created_at
-                        ).toLocaleString("vi-VN")}
+                      <p className="text-sm text-slate-400 mt-4 break-all">
+                        Mã phiếu: {request.id}
                       </p>
-                    )}
 
-                    {(request.status === "PENDING" ||
-                      request.status === "APPROVED") && (
-                      <>
-                        {/* XÁC NHẬN */}
+                      {/* NGÀY TẠO */}
 
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() =>
-                            processRequest(request)
-                          }
-                          className="w-full mt-6 rounded-xl bg-blue-600 text-white py-4 font-bold text-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isProcessing
-                            ? "Đang xử lý..."
-                            : request.status === "PENDING"
-                              ? "Duyệt phiếu"
-                              : "Xác nhận đã giao đồ"}
-                        </button>
+                      {request.created_at && (
+                        <p className="text-sm text-slate-400 mt-1">
+                          Đăng ký lúc:{" "}
+                          {new Date(request.created_at).toLocaleString("vi-VN")}
+                        </p>
+                      )}
 
-                        {/* HỦY */}
+                      {(request.status === "PENDING" ||
+                        request.status === "APPROVED") && (
+                        <>
+                          {/* XÁC NHẬN */}
 
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() =>
-                            cancelRequest(request)
-                          }
-                          className="w-full mt-3 rounded-xl border border-red-200 bg-white text-red-600 py-3 font-semibold hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Hủy phiếu
-                        </button>
-                      </>
-                    )}
+                          <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => processRequest(request)}
+                            className="mt-6 w-full rounded-xl bg-emerald-600 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                          >
+                            {isProcessing
+                              ? "Đang xử lý..."
+                              : request.status === "PENDING"
+                                ? "Duyệt phiếu"
+                                : "Xác nhận đã giao đồ"}
+                          </button>
 
-                  </div>
-                );
-              })}
+                          {/* HỦY */}
 
-            </div>
-          )}
-
-        </section>
+                          <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => cancelRequest(request)}
+                            className="w-full mt-3 rounded-xl border border-red-200 bg-white text-red-600 py-3 font-semibold hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Hủy phiếu
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* =====================================================
             KHO ĐỒ
         ===================================================== */}
 
-        <section>
+        {activeTab === "items" && (
+          <section>
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-3xl font-extrabold text-slate-900">
+                  Kho đồ
+                </h2>
 
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+                <p className="text-slate-600 mt-2">
+                  Thêm, chỉnh sửa, xóa và theo dõi trạng thái các món đồ.
+                </p>
+              </div>
 
-            <div>
-              <h2 className="text-3xl font-black text-slate-900">
-                Kho đồ
-              </h2>
-
-              <p className="text-slate-600 mt-2">
-                Thêm, chỉnh sửa, xóa và theo dõi trạng thái các món đồ.
-              </p>
+              <button
+                type="button"
+                onClick={openCreateItem}
+                className="rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700"
+              >
+                + Thêm sản phẩm
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={openCreateItem}
-              className="rounded-xl bg-blue-600 text-white px-6 py-3 font-bold hover:bg-blue-700"
-            >
-              + Thêm sản phẩm
-            </button>
+            <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+              <label className="relative block">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg">
+                  ⌕
+                </span>
+                <input
+                  type="search"
+                  value={itemSearch}
+                  onChange={(event) => setItemSearch(event.target.value)}
+                  placeholder="Tìm theo mã, tên, danh mục hoặc tình trạng..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-4 font-medium outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                />
+              </label>
+            </div>
 
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredItems.map((item) => {
+                let statusText = "Còn đồ";
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                let statusClass = "bg-green-50 text-green-600";
 
-            {items.map((item) => {
-
-              let statusText = "Còn đồ";
-
-              let statusClass =
-                "bg-green-50 text-green-600";
-
-              if (
-                item.status ===
-                "AVAILABLE"
-              ) {
-                if (getItemRemaining(item) <= 0) {
-                  statusText = "Hết hàng";
-                  statusClass =
-                    "bg-red-50 text-red-600";
-                } else {
-                  statusText = "Còn đồ";
-                  statusClass =
-                    "bg-green-50 text-green-600";
+                if (item.status === "AVAILABLE") {
+                  if (getItemRemaining(item) <= 0) {
+                    statusText = "Hết hàng";
+                    statusClass = "bg-red-50 text-red-600";
+                  } else {
+                    statusText = "Còn đồ";
+                    statusClass = "bg-green-50 text-green-600";
+                  }
                 }
-              }
 
-              if (
-                item.status ===
-                "HELD"
-              ) {
-                statusText = "Đã giao";
-                statusClass =
-                  "bg-blue-50 text-blue-600";
-              }
+                if (item.status === "HELD") {
+                  statusText = "Đang giữ";
+                  statusClass = "bg-amber-50 text-amber-700";
+                }
 
-              if (
-                item.status ===
-                "PENDING"
-              ) {
-                statusText = "Đang chờ";
-                statusClass =
-                  "bg-orange-50 text-orange-600";
-              }
+                if (item.status === "PENDING") {
+                  statusText = "Đang chờ";
+                  statusClass = "bg-orange-50 text-orange-600";
+                }
 
-              if (
-                item.status ===
-                "REJECTED"
-              ) {
-                statusText = "Từ chối";
-                statusClass =
-                  "bg-red-50 text-red-600";
-              }
+                if (item.status === "REJECTED") {
+                  statusText = "Từ chối";
+                  statusClass = "bg-red-50 text-red-600";
+                }
 
-              if (
-                item.status ===
-                "TRANSFERRED"
-              ) {
-                statusText = "Đã chuyển";
-                statusClass =
-                  "bg-slate-100 text-slate-600";
-              }
+                if (item.status === "TRANSFERRED") {
+                  statusText = "Đã chuyển";
+                  statusClass = "bg-slate-100 text-slate-600";
+                }
 
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm"
-                >
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-blue-50 text-blue-600 px-4 py-2 font-bold">
+                        {item.item_code}
+                      </span>
 
-                  <div className="flex items-center justify-between gap-3">
-
-                    <span className="rounded-full bg-blue-50 text-blue-600 px-4 py-2 font-bold">
-                      {item.item_code}
-                    </span>
-
-                    <span
-                      className={`rounded-full px-4 py-2 font-semibold ${statusClass}`}
-                    >
-                      {statusText}
-                    </span>
-
-                  </div>
-
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      className="w-full h-44 object-cover rounded-xl mt-5 border border-slate-200"
-                    />
-                  ) : (
-                    <div className="w-full h-44 rounded-xl mt-5 bg-slate-100 flex items-center justify-center text-slate-400">
-                      Chưa có ảnh
+                      <span
+                        className={`rounded-full px-4 py-2 font-semibold ${statusClass}`}
+                      >
+                        {statusText}
+                      </span>
                     </div>
-                  )}
 
-                  <h3 className="text-2xl font-black text-slate-900 mt-6">
-                    {item.name}
-                  </h3>
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-full h-44 object-cover rounded-xl mt-5 border border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-full h-44 rounded-xl mt-5 bg-slate-100 flex items-center justify-center text-slate-400">
+                        Chưa có ảnh
+                      </div>
+                    )}
 
-                  {item.category && (
-                    <p className="text-slate-600 mt-2">
-                      {item.category}
-                    </p>
-                  )}
+                    <h3 className="text-2xl font-black text-slate-900 mt-6">
+                      {item.name}
+                    </h3>
 
-                  {(() => {
-                    const total = Number(item.quantity ?? 1);
-                    const registered = getItemRequestCount(item.id);
-                    const remaining = getItemRemaining(item);
+                    {item.category && (
+                      <p className="text-slate-600 mt-2">{item.category}</p>
+                    )}
 
-                    return (
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="font-bold text-slate-900">
-                          Số lượng kho
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-                          <div className="rounded-lg bg-white border border-slate-200 p-3">
-                            <p className="text-xs text-slate-500">Tổng</p>
-                            <p className="text-xl font-black text-slate-900">{total}</p>
-                          </div>
-                          <div className="rounded-lg bg-white border border-slate-200 p-3">
-                            <p className="text-xs text-slate-500">Đã đăng ký</p>
-                            <p className="text-xl font-black text-orange-600">{registered}</p>
-                          </div>
-                          <div className="rounded-lg bg-white border border-slate-200 p-3">
-                            <p className="text-xs text-slate-500">Còn lại</p>
-                            <p className={`text-xl font-black ${remaining > 0 ? "text-green-600" : "text-red-600"}`}>
-                              {remaining}
-                            </p>
+                    {(() => {
+                      const total = Number(item.quantity ?? 1);
+                      const registered = getItemRequestCount(item.id);
+                      const remaining = getItemRemaining(item);
+
+                      return (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="font-bold text-slate-900">
+                            Số lượng kho
+                          </p>
+                          <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                            <div className="rounded-lg bg-white border border-slate-200 p-3">
+                              <p className="text-xs text-slate-500">Tổng</p>
+                              <p className="text-xl font-black text-slate-900">
+                                {total}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-white border border-slate-200 p-3">
+                              <p className="text-xs text-slate-500">
+                                Đã đăng ký
+                              </p>
+                              <p className="text-xl font-black text-orange-600">
+                                {registered}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-white border border-slate-200 p-3">
+                              <p className="text-xs text-slate-500">Còn lại</p>
+                              <p
+                                className={`text-xl font-black ${remaining > 0 ? "text-green-600" : "text-red-600"}`}
+                              >
+                                {remaining}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
 
-                  <div className="mt-4 rounded-xl bg-blue-50 border border-blue-100 p-4 text-slate-700">
-                    <p className="font-semibold text-slate-900">
-                      Lịch nhận đồ
-                    </p>
+                    <div className="mt-4 rounded-xl bg-blue-50 border border-blue-100 p-4 text-slate-700">
+                      <p className="font-semibold text-slate-900">
+                        Lịch nhận đồ
+                      </p>
 
-                    {(slotsByItem[item.id] || []).length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        {(slotsByItem[item.id] || []).map((slot, index) => (
-                          <div
-                            key={slot.id || `${item.id}-${index}`}
-                            className="rounded-lg bg-white border border-blue-100 p-3"
-                          >
-                            <p>
-                              <span className="font-semibold">Địa điểm:</span>{" "}
-                              {slot.pickup_location}
-                            </p>
-                            <p className="mt-1">
-                              <span className="font-semibold">Ngày:</span>{" "}
-                              {new Date(
-                                `${slot.pickup_date}T00:00:00`
-                              ).toLocaleDateString("vi-VN")}
-                            </p>
-                            <p className="mt-1">
-                              <span className="font-semibold">Giờ:</span>{" "}
-                              {slot.pickup_start_time} - {slot.pickup_end_time}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-slate-500">
-                        {item.pickup_location || "Chưa chọn"} ·{" "}
-                        {item.pickup_date
-                          ? new Date(
-                              `${item.pickup_date}T00:00:00`
-                            ).toLocaleDateString("vi-VN")
-                          : "Chưa chọn"}{" "}
-                        · {item.pickup_start_time || "--:--"} -{" "}
-                        {item.pickup_end_time || "--:--"}
+                      {(slotsByItem[item.id] || []).length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {(slotsByItem[item.id] || []).map((slot, index) => (
+                            <div
+                              key={slot.id || `${item.id}-${index}`}
+                              className="rounded-lg bg-white border border-blue-100 p-3"
+                            >
+                              <p>
+                                <span className="font-semibold">Địa điểm:</span>{" "}
+                                {slot.pickup_location}
+                              </p>
+                              <p className="mt-1">
+                                <span className="font-semibold">Ngày:</span>{" "}
+                                {new Date(
+                                  `${slot.pickup_date}T00:00:00`,
+                                ).toLocaleDateString("vi-VN")}
+                              </p>
+                              <p className="mt-1">
+                                <span className="font-semibold">Giờ:</span>{" "}
+                                {slot.pickup_start_time} -{" "}
+                                {slot.pickup_end_time}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-slate-500">
+                          {item.pickup_location || "Chưa chọn"} ·{" "}
+                          {item.pickup_date
+                            ? new Date(
+                                `${item.pickup_date}T00:00:00`,
+                              ).toLocaleDateString("vi-VN")
+                            : "Chưa chọn"}{" "}
+                          · {item.pickup_start_time || "--:--"} -{" "}
+                          {item.pickup_end_time || "--:--"}
+                        </p>
+                      )}
+                    </div>
+
+                    {item.condition && (
+                      <p className="text-slate-600 mt-2">
+                        <span className="font-semibold">Tình trạng:</span>{" "}
+                        {item.condition}
                       </p>
                     )}
-                  </div>
 
-                  {item.condition && (
-                    <p className="text-slate-600 mt-2">
-                      <span className="font-semibold">Tình trạng:</span>{" "}
-                      {item.condition}
+                    {item.description && (
+                      <p className="text-slate-600 mt-2 line-clamp-3">
+                        {item.description}
+                      </p>
+                    )}
+
+                    <p className="text-sm text-slate-400 mt-5">
+                      Trạng thái DB: {item.status}
                     </p>
-                  )}
 
-                  {item.description && (
-                    <p className="text-slate-600 mt-2 line-clamp-3">
-                      {item.description}
-                    </p>
-                  )}
+                    <div className="grid grid-cols-2 gap-3 mt-5">
+                      <button
+                        type="button"
+                        onClick={() => openEditItem(item)}
+                        disabled={processingId === item.id}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 py-3 font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        Chỉnh sửa
+                      </button>
 
-                  <p className="text-sm text-slate-400 mt-5">
-                    Trạng thái DB: {item.status}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3 mt-5">
-                    <button
-                      type="button"
-                      onClick={() => openEditItem(item)}
-                      disabled={processingId === item.id}
-                      className="rounded-xl border border-blue-200 bg-blue-50 text-blue-700 py-3 font-bold hover:bg-blue-100 disabled:opacity-50"
-                    >
-                      Chỉnh sửa
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteItem(item)}
-                      disabled={processingId === item.id}
-                      className="rounded-xl border border-red-200 bg-red-50 text-red-700 py-3 font-bold hover:bg-red-100 disabled:opacity-50"
-                    >
-                      {processingId === item.id ? "Đang xóa..." : "Xóa"}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteItem(item)}
+                        disabled={processingId === item.id}
+                        className="rounded-xl border border-slate-200 bg-white py-3 font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {processingId === item.id ? "Đang xóa..." : "Xóa"}
+                      </button>
+                    </div>
                   </div>
-
-                </div>
-              );
-            })}
-
-          </div>
-
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* =====================================================
             FORM THÊM / CHỈNH SỬA SẢN PHẨM
         ===================================================== */}
 
         {showItemForm && (
-          <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-center justify-center">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
               <div className="p-6 border-b border-slate-200 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900">
@@ -1960,7 +2022,7 @@ ${errorMessage}`);
                         }))
                       }
                       placeholder="VD: TS0005"
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                     />
                   </label>
 
@@ -1978,7 +2040,7 @@ ${errorMessage}`);
                         }))
                       }
                       placeholder="VD: Quạt bàn"
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                     />
                   </label>
 
@@ -1995,7 +2057,7 @@ ${errorMessage}`);
                         }))
                       }
                       placeholder="VD: Đồ dùng sinh hoạt"
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                     />
                   </label>
 
@@ -2012,7 +2074,7 @@ ${errorMessage}`);
                         }))
                       }
                       placeholder="VD: Tốt, mới 90%"
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                     />
                   </label>
 
@@ -2032,7 +2094,7 @@ ${errorMessage}`);
                         }))
                       }
                       placeholder="VD: 10"
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       Tổng số đơn vị của sản phẩm trong kho.
@@ -2059,11 +2121,12 @@ ${errorMessage}`);
                           setImagePreview(previewUrl);
                         }
                       }}
-                      className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-700"
+                      className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-emerald-700"
                     />
 
                     <p className="text-sm text-slate-500 mt-2">
-                      Chọn ảnh từ máy, tối đa 5MB. Ảnh sẽ được lưu vào Supabase Storage.
+                      Chọn ảnh từ máy, tối đa 5MB. Ảnh sẽ được lưu vào Supabase
+                      Storage.
                     </p>
 
                     {imagePreview && (
@@ -2085,7 +2148,8 @@ ${errorMessage}`);
                         Lịch nhận đồ
                       </h3>
                       <p className="text-sm text-slate-600 mt-1">
-                        BTC có thể tạo nhiều địa điểm, ngày và khung giờ. Sinh viên sẽ chỉ được chọn các lịch này.
+                        BTC có thể tạo nhiều địa điểm, ngày và khung giờ. Sinh
+                        viên sẽ chỉ được chọn các lịch này.
                       </p>
                     </div>
 
@@ -2104,7 +2168,7 @@ ${errorMessage}`);
                           },
                         ])
                       }
-                      className="shrink-0 rounded-lg bg-blue-600 text-white px-4 py-2 font-bold hover:bg-blue-700 disabled:opacity-50"
+                      className="shrink-0 rounded-lg bg-emerald-600 text-white px-4 py-2 font-bold hover:bg-emerald-700 disabled:opacity-50"
                     >
                       + Thêm lịch
                     </button>
@@ -2127,7 +2191,7 @@ ${errorMessage}`);
                               disabled={savingItem}
                               onClick={() =>
                                 setPickupSlots((current) =>
-                                  current.filter((_, i) => i !== index)
+                                  current.filter((_, i) => i !== index),
                                 )
                               }
                               className="text-sm font-semibold text-red-600 hover:text-red-700"
@@ -2153,12 +2217,12 @@ ${errorMessage}`);
                                           ...currentSlot,
                                           pickup_location: e.target.value,
                                         }
-                                      : currentSlot
-                                  )
+                                      : currentSlot,
+                                  ),
                                 )
                               }
                               placeholder="VD: Hòa Lạc"
-                              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
                             />
                             <datalist id={`btc-pickup-locations-${index}`}>
                               <option value="Hòa Lạc" />
@@ -2184,11 +2248,11 @@ ${errorMessage}`);
                                           ...currentSlot,
                                           pickup_date: e.target.value,
                                         }
-                                      : currentSlot
-                                  )
+                                      : currentSlot,
+                                  ),
                                 )
                               }
-                              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
                             />
                           </label>
 
@@ -2202,22 +2266,25 @@ ${errorMessage}`);
                                 inputMode="numeric"
                                 maxLength={5}
                                 placeholder="07:30"
-                                value={formatTimeForInput(slot.pickup_start_time)}
+                                value={formatTimeForInput(
+                                  slot.pickup_start_time,
+                                )}
                                 onChange={(e) =>
                                   setPickupSlots((current) =>
                                     current.map((currentSlot, i) =>
                                       i === index
                                         ? {
                                             ...currentSlot,
-                                            pickup_start_time: normalizeTimeInput(
-                                              e.target.value
-                                            ),
+                                            pickup_start_time:
+                                              normalizeTimeInput(
+                                                e.target.value,
+                                              ),
                                           }
-                                        : currentSlot
-                                    )
+                                        : currentSlot,
+                                    ),
                                   )
                                 }
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 outline-none focus:border-blue-500"
+                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 outline-none focus:border-emerald-500"
                               />
                             </label>
 
@@ -2238,19 +2305,20 @@ ${errorMessage}`);
                                         ? {
                                             ...currentSlot,
                                             pickup_end_time: normalizeTimeInput(
-                                              e.target.value
+                                              e.target.value,
                                             ),
                                           }
-                                        : currentSlot
-                                    )
+                                        : currentSlot,
+                                    ),
                                   )
                                 }
-                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 outline-none focus:border-blue-500"
+                                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 outline-none focus:border-emerald-500"
                               />
                             </label>
                           </div>
                           <p className="mt-2 text-sm text-slate-500">
-                            Nhập giờ 24h, không dùng AM/PM. Ví dụ: 07:30, 14:00, 18:45.
+                            Nhập giờ 24h, không dùng AM/PM. Ví dụ: 07:30, 14:00,
+                            18:45.
                           </p>
                         </div>
                       </div>
@@ -2259,9 +2327,7 @@ ${errorMessage}`);
                 </div>
 
                 <label className="block">
-                  <span className="font-semibold text-slate-700">
-                    Mô tả
-                  </span>
+                  <span className="font-semibold text-slate-700">Mô tả</span>
                   <textarea
                     value={itemForm.description}
                     onChange={(e) =>
@@ -2272,7 +2338,7 @@ ${errorMessage}`);
                     }
                     rows={4}
                     placeholder="Mô tả chi tiết sản phẩm..."
-                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500"
                   />
                 </label>
 
@@ -2290,7 +2356,7 @@ ${errorMessage}`);
                     type="button"
                     onClick={saveItem}
                     disabled={savingItem}
-                    className="flex-1 rounded-xl bg-blue-600 text-white py-3 font-bold hover:bg-blue-700 disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-emerald-600 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {savingItem
                       ? "Đang lưu..."
@@ -2303,7 +2369,6 @@ ${errorMessage}`);
             </div>
           </div>
         )}
-
       </div>
     </main>
   );
