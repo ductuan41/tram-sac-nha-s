@@ -365,7 +365,13 @@ export default function AdminPage() {
                 ["Đã giao", stats?.delivered_requests ?? 0, "text-emerald-600"],
                 ["Đã hủy", stats?.cancelled_requests ?? 0, "text-rose-600"],
                 ["Tổng sản phẩm", stats?.total_items ?? 0, "text-violet-600"],
-                ["Đang có sẵn", stats?.available_items ?? 0, "text-cyan-600"],
+                [
+                  "Loại còn hàng",
+                  dashboard?.inventory.filter(
+                    (item) => item.remaining_quantity > 0,
+                  ).length ?? 0,
+                  "text-cyan-600",
+                ],
                 ["Tài khoản BTC", stats?.total_btc ?? 0, "text-orange-500"],
               ].map(([label, value, numberClass]) => (
                 <div
