@@ -52,10 +52,11 @@ export default function KhoPage() {
   const [error, setError] = useState("");
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<Item | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<PickupSlot[]>([]);
-  const [registeredCounts, setRegisteredCounts] = useState<Record<string, number>>(
-    {}
-  );
+  const [registeredCounts, setRegisteredCounts] = useState<
+    Record<string, number>
+  >({});
 
   const [form, setForm] = useState<RequestForm>({
     delivery_method: "",
@@ -70,9 +71,13 @@ export default function KhoPage() {
   const [formError, setFormError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [stockFilter, setStockFilter] = useState<"all" | "available" | "out">("all");
+  const [stockFilter, setStockFilter] = useState<"all" | "available" | "out">(
+    "all",
+  );
   const [locationFilter, setLocationFilter] = useState("all");
-  const [sortOption, setSortOption] = useState<"newest" | "name-asc" | "remaining-desc">("newest");
+  const [sortOption, setSortOption] = useState<
+    "newest" | "name-asc" | "remaining-desc"
+  >("newest");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [viewMode, setViewMode] = useState<"1" | "2">("2");
 
@@ -99,8 +104,16 @@ export default function KhoPage() {
     // Không subscribe payload của requests để tránh lộ tên/SĐT cho người chưa đăng nhập.
     channel = supabase
       .channel("public-kho-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "items" }, refreshData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pickup_slots" }, refreshData)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "items" },
+        refreshData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pickup_slots" },
+        refreshData,
+      )
       .subscribe((status) => {
         console.log("📡 Kho Realtime status:", status);
       });
@@ -125,7 +138,8 @@ export default function KhoPage() {
       const [itemsResult, slotsResult] = await Promise.all([
         supabase
           .from("items")
-          .select(`
+          .select(
+            `
             id,
             item_code,
             name,
@@ -136,14 +150,16 @@ export default function KhoPage() {
             status,
             quantity,
             created_at
-          `)
+          `,
+          )
           .order("created_at", {
             ascending: false,
           }),
 
         supabase
           .from("pickup_slots")
-          .select(`
+          .select(
+            `
             id,
             item_id,
             pickup_location,
@@ -152,7 +168,8 @@ export default function KhoPage() {
             pickup_end_time,
             is_active,
             created_at
-          `)
+          `,
+          )
           .eq("is_active", true)
           .order("pickup_date", {
             ascending: true,
@@ -179,11 +196,11 @@ export default function KhoPage() {
       if (activeRequestCountsError) {
         console.warn(
           "Không tải được số lượng đã đăng ký:",
-          activeRequestCountsError.message
+          activeRequestCountsError.message,
         );
         setRegisteredCounts({});
         setError(
-          "Không thể tải số lượng đã đăng ký. Hãy chạy SQL RPC get_public_item_request_counts trong Supabase."
+          "Không thể tải số lượng đã đăng ký. Hãy chạy SQL RPC get_public_item_request_counts trong Supabase.",
         );
       } else {
         const counts: Record<string, number> = {};
@@ -195,11 +212,7 @@ export default function KhoPage() {
     } catch (err) {
       console.error(err);
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Không thể tải dữ liệu."
-      );
+      setError(err instanceof Error ? err.message : "Không thể tải dữ liệu.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -218,7 +231,7 @@ export default function KhoPage() {
       return;
     }
     const itemSlots = pickupSlots.filter(
-      (slot) => slot.item_id === item.id && slot.is_active
+      (slot) => slot.item_id === item.id && slot.is_active,
     );
 
     setSelectedItem(item);
@@ -242,10 +255,7 @@ export default function KhoPage() {
     setFormError("");
   }
 
-  function updateForm(
-    field: keyof RequestForm,
-    value: string
-  ) {
+  function updateForm(field: keyof RequestForm, value: string) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -282,7 +292,7 @@ export default function KhoPage() {
       }
 
       selectedSlot = selectedSlots.find(
-        (slot) => slot.id === form.pickup_slot_id
+        (slot) => slot.id === form.pickup_slot_id,
       );
 
       if (!selectedSlot) {
@@ -311,7 +321,7 @@ export default function KhoPage() {
             form.delivery_method === "SHIP"
               ? form.shipping_address.trim()
               : null,
-        }
+        },
       );
 
       if (requestError) {
@@ -319,19 +329,19 @@ export default function KhoPage() {
 
         if (message.includes("đã đăng ký")) {
           throw new Error(
-            "Bạn đã đăng ký sản phẩm này rồi. Mỗi sinh viên chỉ được đăng ký 1 lần cho một sản phẩm."
+            "Bạn đã đăng ký sản phẩm này rồi. Mỗi sinh viên chỉ được đăng ký 1 lần cho một sản phẩm.",
           );
         }
 
         if (message.includes("hết hàng")) {
           throw new Error(
-            "Sản phẩm vừa hết hàng. Một sinh viên khác có thể đã đăng ký trước bạn."
+            "Sản phẩm vừa hết hàng. Một sinh viên khác có thể đã đăng ký trước bạn.",
           );
         }
 
         if (message.includes("Lịch nhận đồ")) {
           throw new Error(
-            "Lịch nhận đồ này không còn hoạt động. Vui lòng chọn lịch khác."
+            "Lịch nhận đồ này không còn hoạt động. Vui lòng chọn lịch khác.",
           );
         }
 
@@ -340,15 +350,15 @@ export default function KhoPage() {
 
       if (form.delivery_method === "SHIP") {
         setSuccessMessage(
-          "Đăng ký ship thành công! BTC sẽ liên hệ với bạn để xác nhận việc giao hàng."
+          "Đăng ký thành công! Vui lòng chờ BTC xác nhận phiếu. BTC sẽ liên hệ với bạn về việc giao hàng.",
         );
       } else if (selectedSlot) {
         setSuccessMessage(
           `Đăng ký thành công! Lịch nhận: ${selectedSlot.pickup_location} · ${formatDate(
-            selectedSlot.pickup_date
+            selectedSlot.pickup_date,
           )} · ${formatTime(selectedSlot.pickup_start_time)} - ${formatTime(
-            selectedSlot.pickup_end_time
-          )}.`
+            selectedSlot.pickup_end_time,
+          )}. Vui lòng chờ BTC xác nhận phiếu.`,
         );
       }
 
@@ -364,9 +374,7 @@ export default function KhoPage() {
       console.error(err);
 
       setFormError(
-        err instanceof Error
-          ? err.message
-          : "Không thể đăng ký nhận đồ."
+        err instanceof Error ? err.message : "Không thể đăng ký nhận đồ.",
       );
     } finally {
       setSubmitting(false);
@@ -376,8 +384,7 @@ export default function KhoPage() {
   function formatDate(dateString: string) {
     if (!dateString) return "";
 
-    const [year, month, day] =
-      dateString.split("-");
+    const [year, month, day] = dateString.split("-");
 
     if (!year || !month || !day) {
       return dateString;
@@ -394,7 +401,7 @@ export default function KhoPage() {
 
   function getItemSlots(itemId: string) {
     return pickupSlots.filter(
-      (slot) => slot.item_id === itemId && slot.is_active
+      (slot) => slot.item_id === itemId && slot.is_active,
     );
   }
 
@@ -409,8 +416,8 @@ export default function KhoPage() {
       pickupSlots
         .filter((slot) => slot.is_active)
         .map((slot) => slot.pickup_location.trim())
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   ).sort((a, b) => a.localeCompare(b, "vi"));
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -418,12 +425,7 @@ export default function KhoPage() {
   const filteredItems = items
     .filter((item) => {
       if (!normalizedSearch) return true;
-      return [
-        item.name,
-        item.item_code,
-        item.category,
-        item.description,
-      ]
+      return [item.name, item.item_code, item.category, item.description]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -439,7 +441,7 @@ export default function KhoPage() {
     .filter((item) => {
       if (locationFilter === "all") return true;
       return getItemSlots(item.id).some(
-        (slot) => slot.pickup_location === locationFilter
+        (slot) => slot.pickup_location === locationFilter,
       );
     })
     .sort((a, b) => {
@@ -455,20 +457,28 @@ export default function KhoPage() {
     });
 
   const availableItemCount = items.filter(
-    (item) => getRemainingQuantity(item) > 0
+    (item) => getRemainingQuantity(item) > 0,
   ).length;
 
   const pickupLocationCount = locationOptions.length;
 
   return (
-    <main className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}>
+    <main
+      className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}
+    >
       <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-xl text-white shadow-sm">S</span>
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-xl text-white shadow-sm">
+              S
+            </span>
             <span>
-              <span className="block text-sm font-extrabold uppercase tracking-[0.16em] text-emerald-700">Trạm sạc nhà S</span>
-              <span className="block text-xs font-medium text-slate-500">Trao đi · Nhận lại · Kết nối</span>
+              <span className="block text-sm font-extrabold uppercase tracking-[0.16em] text-emerald-700">
+                Trạm sạc nhà S
+              </span>
+              <span className="block text-xs font-medium text-slate-500">
+                Trao đi · Nhận lại · Kết nối
+              </span>
             </span>
           </a>
         </div>
@@ -478,9 +488,14 @@ export default function KhoPage() {
         <div className="flex flex-col gap-4 rounded-2xl border border-amber-200/70 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="font-extrabold text-slate-900">Đã đăng ký nhận đồ?</p>
-            <p className="mt-1 text-sm text-slate-600">Nhập họ tên và số điện thoại để xem tình trạng phiếu đăng ký.</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Nhập họ tên và số điện thoại để xem tình trạng phiếu đăng ký.
+            </p>
           </div>
-          <a href="/theo-doi" className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md">
+          <a
+            href="/theo-doi"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md"
+          >
             Theo dõi đăng ký →
           </a>
         </div>
@@ -490,13 +505,27 @@ export default function KhoPage() {
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10" />
           <div className="absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-lime-300/10" />
           <div className="relative max-w-3xl">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-emerald-100">Kho đồ sẻ chia</p>
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Tìm một món đồ<br className="hidden sm:block" /> bạn đang cần.</h1>
-            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-emerald-50 sm:text-lg">Mỗi món đồ được trao đi là một vòng đời mới được bắt đầu. Tìm kiếm, chọn lịch và đăng ký chỉ trong vài bước.</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-emerald-100">
+              Kho đồ sẻ chia
+            </p>
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Tìm một món đồ
+              <br className="hidden sm:block" /> bạn đang cần.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-emerald-50 sm:text-lg">
+              Mỗi món đồ được trao đi là một vòng đời mới được bắt đầu. Tìm
+              kiếm, chọn lịch và đăng ký chỉ trong vài bước.
+            </p>
             <div className="mt-7 flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{items.length}</b> vật phẩm</span>
-              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{availableItemCount}</b> còn có thể nhận</span>
-              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur"><b>{pickupLocationCount}</b> điểm nhận</span>
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur">
+                <b>{items.length}</b> vật phẩm
+              </span>
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur">
+                <b>{availableItemCount}</b> còn có thể nhận
+              </span>
+              <span className="rounded-full bg-white/15 px-4 py-2 font-semibold backdrop-blur">
+                <b>{pickupLocationCount}</b> điểm nhận
+              </span>
             </div>
           </div>
         </div>
@@ -532,7 +561,11 @@ export default function KhoPage() {
               <div className="grid gap-3 md:grid-cols-3">
                 <select
                   value={stockFilter}
-                  onChange={(e) => setStockFilter(e.target.value as "all" | "available" | "out")}
+                  onChange={(e) =>
+                    setStockFilter(
+                      e.target.value as "all" | "available" | "out",
+                    )
+                  }
                   className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 >
                   <option value="all">Tất cả sản phẩm</option>
@@ -557,7 +590,8 @@ export default function KhoPage() {
                   value={sortOption}
                   onChange={(e) =>
                     setSortOption(
-                      e.target.value as "newest" | "name-asc" | "remaining-desc"
+                      e.target.value as
+                        "newest" | "name-asc" | "remaining-desc",
                     )
                   }
                   className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
@@ -618,12 +652,16 @@ export default function KhoPage() {
                 </label>
 
                 <p className="text-sm text-slate-500">
-                  Hiển thị <b>{filteredItems.length}</b> / {items.length} sản phẩm
+                  Hiển thị <b>{filteredItems.length}</b> / {items.length} sản
+                  phẩm
                 </p>
               </div>
 
-              {(searchQuery || stockFilter !== "all" || locationFilter !== "all" ||
-                sortOption !== "newest" || onlyAvailable) && (
+              {(searchQuery ||
+                stockFilter !== "all" ||
+                locationFilter !== "all" ||
+                sortOption !== "newest" ||
+                onlyAvailable) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -644,9 +682,7 @@ export default function KhoPage() {
 
         {loading ? (
           <div className="rounded-3xl bg-white p-16 text-center shadow-sm">
-            <p className="text-lg text-slate-500">
-              Đang tải dữ liệu...
-            </p>
+            <p className="text-lg text-slate-500">Đang tải dữ liệu...</p>
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-3xl bg-white p-16 text-center shadow-sm">
@@ -684,9 +720,7 @@ export default function KhoPage() {
         ) : (
           <div
             className={`grid gap-6 ${
-              viewMode === "1"
-                ? "grid-cols-1"
-                : "grid-cols-1 sm:grid-cols-2"
+              viewMode === "1" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"
             }`}
           >
             {filteredItems.map((item) => {
@@ -732,7 +766,7 @@ export default function KhoPage() {
                         }
                       >
                         {available
-                          ? "Có thể lấy"
+                          ? "Có thể đăng ký"
                           : remaining <= 0
                             ? "Đã hết"
                             : "Không khả dụng"}
@@ -759,107 +793,12 @@ export default function KhoPage() {
                       Còn lại {remaining} / {Number(item.quantity ?? 1)}
                     </div>
 
-                    {item.condition && (
-                      <p className="mt-5 text-slate-700">
-                        <span className="font-semibold">
-                          Tình trạng:
-                        </span>{" "}
-                        {item.condition}
-                      </p>
-                    )}
-
-                    {item.description && (
-                      <p className="mt-4 min-h-12 leading-7 text-slate-600">
-                        {item.description}
-                      </p>
-                    )}
-
-                    {(() => {
-                      const total = Number(item.quantity ?? 1);
-                      const registered = registeredCounts[item.id] ?? 0;
-                      const remaining = getRemainingQuantity(item);
-
-                      return (
-                        <div
-                          className={`mt-6 rounded-2xl border p-4 ${
-                            remaining > 0
-                              ? "border-green-200 bg-green-50"
-                              : "border-red-200 bg-red-50"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-bold text-slate-900">
-                              Tình trạng kho
-                            </p>
-                            <span
-                              className={`rounded-full px-3 py-1 text-sm font-bold ${
-                                remaining > 0
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {remaining > 0 ? "Còn hàng" : "Hết hàng"}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm text-slate-700">
-                            Còn lại <b>{remaining}</b> / {total} sản phẩm
-                            {registered > 0 && ` · Đã đăng ký ${registered}`}
-                          </p>
-                        </div>
-                      );
-                    })()}
-
-                    <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
-                      <p className="font-bold text-slate-900">
-                        Lịch nhận đồ
-                      </p>
-
-                      {getItemSlots(item.id).length === 0 ? (
-                        <p className="mt-2 text-sm text-slate-500">
-                          BTC chưa mở lịch nhận cho sản phẩm này.
-                        </p>
-                      ) : (
-                        <div className="mt-3 space-y-2">
-                          {getItemSlots(item.id).map((slot) => (
-                            <div
-                              key={slot.id}
-                              className="rounded-xl bg-white px-4 py-3 text-sm text-slate-700"
-                            >
-                              <p className="font-semibold text-slate-900">
-                                {slot.pickup_location}
-                              </p>
-                              <p className="mt-1">
-                                {formatDate(slot.pickup_date)} ·{" "}
-                                {formatTime(slot.pickup_start_time)} -{" "}
-                                {formatTime(slot.pickup_end_time)}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
                     <button
                       type="button"
-                      disabled={
-                        !available ||
-                        getItemSlots(item.id).length === 0 ||
-getRemainingQuantity(item) <= 0
-                      }
-                      onClick={() => openRegister(item)}
-                      title={getRemainingQuantity(item) <= 0 ? "Sản phẩm đã hết hàng" : undefined}
-                      aria-label={getRemainingQuantity(item) <= 0 ? "Sản phẩm đã hết hàng" : "Lấy đồ"}
-                      className={`mt-6 w-full rounded-2xl px-5 py-4 text-base font-extrabold transition ${
-                        available && getItemSlots(item.id).length > 0
-                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700"
-                          : "cursor-not-allowed bg-slate-100 text-slate-400"
-                      }`}
+                      onClick={() => setSelectedDetail(item)}
+                      className="mt-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-base font-extrabold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
                     >
-                      {getRemainingQuantity(item) <= 0
-                        ? "Hết hàng"
-                        : available
-                          ? "Lấy đồ"
-                          : "Không khả dụng"}
+                      Xem chi tiết
                     </button>
                   </div>
                 </div>
@@ -868,6 +807,143 @@ getRemainingQuantity(item) <= 0
           </div>
         )}
       </div>
+
+      {selectedDetail && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setSelectedDetail(null);
+          }}
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+            <div className="relative">
+              {selectedDetail.image_url ? (
+                <img
+                  src={selectedDetail.image_url}
+                  alt={selectedDetail.name}
+                  className="h-64 w-full object-cover sm:h-80"
+                />
+              ) : (
+                <div className="flex h-56 items-center justify-center bg-slate-100 text-slate-400">
+                  Không có ảnh
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedDetail(null)}
+                aria-label="Đóng chi tiết"
+                className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/95 text-2xl text-slate-600 shadow-lg transition hover:bg-white hover:text-slate-900"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold tracking-wide text-emerald-700">
+                    {selectedDetail.item_code ?? "MÃ ĐỒ"}
+                  </span>
+                  <h2 className="mt-4 text-3xl font-extrabold leading-tight text-slate-900">
+                    {selectedDetail.name}
+                  </h2>
+                  {selectedDetail.category && (
+                    <p className="mt-2 text-slate-500">
+                      {selectedDetail.category}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`rounded-full px-4 py-2 text-sm font-bold ${
+                    getRemainingQuantity(selectedDetail) > 0
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-rose-50 text-rose-700"
+                  }`}
+                >
+                  {getRemainingQuantity(selectedDetail) > 0
+                    ? `Còn ${getRemainingQuantity(selectedDetail)} / ${Number(selectedDetail.quantity ?? 1)}`
+                    : "Hết hàng"}
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-semibold text-slate-500">
+                    Tình trạng
+                  </p>
+                  <p className="mt-2 font-bold text-slate-900">
+                    {selectedDetail.condition || "Chưa cập nhật"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-semibold text-slate-500">
+                    Đã có phiếu đăng ký
+                  </p>
+                  <p className="mt-2 font-bold text-slate-900">
+                    {registeredCounts[selectedDetail.id] ?? 0} phiếu
+                  </p>
+                </div>
+              </div>
+
+              {selectedDetail.description && (
+                <div className="mt-6">
+                  <h3 className="font-extrabold text-slate-900">
+                    Mô tả vật phẩm
+                  </h3>
+                  <p className="mt-2 leading-7 text-slate-600">
+                    {selectedDetail.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/70 p-5">
+                <h3 className="font-extrabold text-slate-900">
+                  Lịch lấy trực tiếp
+                </h3>
+                {getItemSlots(selectedDetail.id).length === 0 ? (
+                  <p className="mt-2 text-sm text-slate-600">
+                    BTC chưa mở lịch lấy trực tiếp. Bạn vẫn có thể đăng ký ship
+                    hàng.
+                  </p>
+                ) : (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {getItemSlots(selectedDetail.id).map((slot) => (
+                      <div
+                        key={slot.id}
+                        className="rounded-xl bg-white p-4 text-sm text-slate-700 ring-1 ring-sky-100"
+                      >
+                        <p className="font-bold text-slate-900">
+                          {slot.pickup_location}
+                        </p>
+                        <p className="mt-1">
+                          {formatDate(slot.pickup_date)} ·{" "}
+                          {formatTime(slot.pickup_start_time)} -{" "}
+                          {formatTime(slot.pickup_end_time)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                disabled={getRemainingQuantity(selectedDetail) <= 0}
+                onClick={() => {
+                  const item = selectedDetail;
+                  setSelectedDetail(null);
+                  openRegister(item);
+                }}
+                className="mt-7 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+              >
+                {getRemainingQuantity(selectedDetail) > 0
+                  ? "Đăng ký nhận đồ"
+                  : "Vật phẩm đã hết hàng"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
@@ -908,20 +984,23 @@ getRemainingQuantity(item) <= 0
                     <div className="grid gap-4 sm:grid-cols-2">
                       <button
                         type="button"
+                        disabled={selectedSlots.length === 0}
                         onClick={() =>
                           setForm((current) => ({
                             ...current,
                             delivery_method: "PICKUP",
                           }))
                         }
-                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
+                        className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-emerald-500 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-55 disabled:hover:border-slate-200"
                       >
                         <div className="text-3xl">🏠</div>
                         <p className="mt-3 text-lg font-bold text-slate-900">
                           Bạn muốn đến lấy trực tiếp
                         </p>
                         <p className="mt-2 text-sm text-slate-500">
-                          Chọn địa điểm, ngày và khung giờ do BTC mở.
+                          {selectedSlots.length > 0
+                            ? "Chọn địa điểm, ngày và khung giờ do BTC mở."
+                            : "BTC chưa mở lịch lấy trực tiếp cho vật phẩm này."}
                         </p>
                       </button>
 
@@ -979,7 +1058,9 @@ getRemainingQuantity(item) <= 0
                       <input
                         type="text"
                         value={form.full_name}
-                        onChange={(e) => updateForm("full_name", e.target.value)}
+                        onChange={(e) =>
+                          updateForm("full_name", e.target.value)
+                        }
                         placeholder="Nguyễn Văn A"
                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                       />
@@ -1004,7 +1085,8 @@ getRemainingQuantity(item) <= 0
                           Chọn lịch nhận đồ
                         </label>
                         <p className="mb-4 text-sm text-slate-600">
-                          Bạn chỉ có thể chọn ngày, địa điểm và khung giờ do BTC đã mở.
+                          Bạn chỉ có thể chọn ngày, địa điểm và khung giờ do BTC
+                          đã mở.
                         </p>
 
                         {selectedSlots.length === 0 ? (
@@ -1029,7 +1111,10 @@ getRemainingQuantity(item) <= 0
                                     value={slot.id}
                                     checked={form.pickup_slot_id === slot.id}
                                     onChange={(e) =>
-                                      updateForm("pickup_slot_id", e.target.value)
+                                      updateForm(
+                                        "pickup_slot_id",
+                                        e.target.value,
+                                      )
                                     }
                                     className="mt-1 h-5 w-5"
                                   />
@@ -1038,10 +1123,17 @@ getRemainingQuantity(item) <= 0
                                       {slot.pickup_location}
                                     </p>
                                     <p className="mt-1 text-slate-700">
-                                      Ngày: <span className="font-semibold">{formatDate(slot.pickup_date)}</span>
+                                      Ngày:{" "}
+                                      <span className="font-semibold">
+                                        {formatDate(slot.pickup_date)}
+                                      </span>
                                     </p>
                                     <p className="mt-1 text-slate-700">
-                                      Khung giờ: <span className="font-semibold">{formatTime(slot.pickup_start_time)} - {formatTime(slot.pickup_end_time)}</span>
+                                      Khung giờ:{" "}
+                                      <span className="font-semibold">
+                                        {formatTime(slot.pickup_start_time)} -{" "}
+                                        {formatTime(slot.pickup_end_time)}
+                                      </span>
                                     </p>
                                   </div>
                                 </div>
@@ -1057,7 +1149,9 @@ getRemainingQuantity(item) <= 0
                         </label>
                         <textarea
                           value={form.shipping_address}
-                          onChange={(e) => updateForm("shipping_address", e.target.value)}
+                          onChange={(e) =>
+                            updateForm("shipping_address", e.target.value)
+                          }
                           placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                           rows={4}
                           className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
@@ -1077,14 +1171,13 @@ getRemainingQuantity(item) <= 0
                   !form.phone.trim() ||
                   (form.delivery_method === "PICKUP" &&
                     (!form.pickup_slot_id || selectedSlots.length === 0)) ||
-                  (form.delivery_method === "SHIP" && !form.shipping_address.trim())
+                  (form.delivery_method === "SHIP" &&
+                    !form.shipping_address.trim())
                 }
                 onClick={submitRequest}
                 className="mt-8 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               >
-                {submitting
-                  ? "Đang đăng ký..."
-                  : "Xác nhận đăng ký"}
+                {submitting ? "Đang đăng ký..." : "Xác nhận đăng ký"}
               </button>
             </div>
           </div>
