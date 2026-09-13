@@ -82,7 +82,7 @@ function formatDateTime(value: string | null) {
 
 function statusLabel(status: string) {
   if (status === "PENDING") return "Chờ duyệt";
-  if (status === "APPROVED") return "Đã duyệt";
+  if (status === "APPROVED") return "Đã xác nhận";
   if (status === "DELIVERED") return "Đã giao";
   if (status === "CANCELLED") return "Đã hủy";
   return status;
@@ -357,7 +357,11 @@ export default function AdminPage() {
               {[
                 ["Tổng phiếu", stats?.total_requests ?? 0, "text-emerald-700"],
                 ["Chờ duyệt", stats?.pending_requests ?? 0, "text-amber-500"],
-                ["Đã duyệt", stats?.approved_requests ?? 0, "text-indigo-600"],
+                [
+                  "Đã xác nhận",
+                  stats?.approved_requests ?? 0,
+                  "text-indigo-600",
+                ],
                 ["Đã giao", stats?.delivered_requests ?? 0, "text-emerald-600"],
                 ["Đã hủy", stats?.cancelled_requests ?? 0, "text-rose-600"],
                 ["Tổng sản phẩm", stats?.total_items ?? 0, "text-violet-600"],
@@ -472,7 +476,7 @@ export default function AdminPage() {
                       <p className="text-2xl font-black text-emerald-700">
                         {btc.approved_count}
                       </p>
-                      <p className="text-xs text-slate-500">Duyệt</p>
+                      <p className="text-xs text-slate-500">Xác nhận</p>
                     </div>
                     <div className="rounded-xl bg-green-50 p-3">
                       <p className="text-2xl font-black text-green-700">
@@ -661,7 +665,7 @@ export default function AdminPage() {
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="PENDING">Chờ duyệt</option>
-                <option value="APPROVED">Đã duyệt</option>
+                <option value="APPROVED">Đã xác nhận</option>
                 <option value="DELIVERED">Đã giao</option>
                 <option value="CANCELLED">Đã hủy</option>
               </select>
@@ -736,7 +740,7 @@ export default function AdminPage() {
                         <p>📝 Đăng ký: {formatDateTime(request.created_at)}</p>
                         {request.approved_by_name && (
                           <p>
-                            ✅ Duyệt: <b>{request.approved_by_name}</b> ·{" "}
+                            ✅ Xác nhận: <b>{request.approved_by_name}</b> ·{" "}
                             {formatDateTime(request.approved_at)}
                           </p>
                         )}
