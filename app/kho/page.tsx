@@ -10,6 +10,8 @@ const beVietnamPro = Be_Vietnam_Pro({
   display: "swap",
 });
 
+const ITEMS_PER_PAGE = 12;
+
 type Item = {
   id: string;
   item_code: string | null;
@@ -71,6 +73,7 @@ export default function KhoPage() {
   const [formError, setFormError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState<"all" | "available" | "out">(
     "all",
   );
@@ -80,6 +83,7 @@ export default function KhoPage() {
   >("newest");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [viewMode, setViewMode] = useState<"1" | "2">("2");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   useEffect(() => {
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,6 +133,17 @@ export default function KhoPage() {
       if (channel) void supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    setVisibleCount(ITEMS_PER_PAGE);
+  }, [
+    searchQuery,
+    categoryFilter,
+    stockFilter,
+    locationFilter,
+    sortOption,
+    onlyAvailable,
+  ]);
 
   async function loadData(silent = false) {
     try {
@@ -420,6 +435,14 @@ export default function KhoPage() {
     ),
   ).sort((a, b) => a.localeCompare(b, "vi"));
 
+  const categoryOptions = Array.from(
+    new Set(
+      items
+        .map((item) => item.category?.trim())
+        .filter((category): category is string => Boolean(category)),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "vi"));
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const filteredItems = items
@@ -430,6 +453,10 @@ export default function KhoPage() {
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch);
+    })
+    .filter((item) => {
+      if (categoryFilter === "all") return true;
+      return item.category?.trim() === categoryFilter;
     })
     .filter((item) => {
       const remaining = getRemainingQuantity(item);
@@ -455,6 +482,9 @@ export default function KhoPage() {
       const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
       return bTime - aTime;
     });
+
+  const visibleItems = filteredItems.slice(0, visibleCount);
+  const hasMoreItems = visibleCount < filteredItems.length;
 
   const availableItemCount = items.filter(
     (item) => getRemainingQuantity(item) > 0,
@@ -558,7 +588,20 @@ export default function KhoPage() {
                 />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                >
+                  <option value="all">Tất cả danh mục</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+
                 <select
                   value={stockFilter}
                   onChange={(e) =>
@@ -652,12 +695,13 @@ export default function KhoPage() {
                 </label>
 
                 <p className="text-sm text-slate-500">
-                  Hiển thị <b>{filteredItems.length}</b> / {items.length} sản
+                  Tìm thấy <b>{filteredItems.length}</b> / {items.length} sản
                   phẩm
                 </p>
               </div>
 
               {(searchQuery ||
+                categoryFilter !== "all" ||
                 stockFilter !== "all" ||
                 locationFilter !== "all" ||
                 sortOption !== "newest" ||
@@ -666,6 +710,7 @@ export default function KhoPage() {
                   type="button"
                   onClick={() => {
                     setSearchQuery("");
+                    setCategoryFilter("all");
                     setStockFilter("all");
                     setLocationFilter("all");
                     setSortOption("newest");
@@ -707,6 +752,7 @@ export default function KhoPage() {
               type="button"
               onClick={() => {
                 setSearchQuery("");
+                setCategoryFilter("all");
                 setStockFilter("all");
                 setLocationFilter("all");
                 setSortOption("newest");
@@ -718,93 +764,120 @@ export default function KhoPage() {
             </button>
           </div>
         ) : (
-          <div
-            className={`grid gap-6 ${
-              viewMode === "1" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"
-            }`}
-          >
-            {filteredItems.map((item) => {
-              const remaining = getRemainingQuantity(item);
-              const available = isItemAvailable(item);
+          <>
+            <div
+              className={`grid gap-6 ${
+                viewMode === "1" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"
+              }`}
+            >
+              {visibleItems.map((item) => {
+                const remaining = getRemainingQuantity(item);
+                const available = isItemAvailable(item);
 
-              return (
-                <div
-                  key={item.id}
-                  className={`group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/80 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10 ${
-                    viewMode === "1" ? "lg:flex" : ""
-                  }`}
-                >
+                return (
                   <div
-                    className={`flex h-64 items-center justify-center bg-slate-100 ${
-                      viewMode === "1" ? "lg:h-auto lg:w-2/5 lg:shrink-0" : ""
+                    key={item.id}
+                    className={`group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/80 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10 ${
+                      viewMode === "1" ? "lg:flex" : ""
                     }`}
                   >
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <span className="text-lg text-slate-400">
-                        Không có ảnh
-                      </span>
-                    )}
-                  </div>
-
-                  <div className={`p-6 ${viewMode === "1" ? "lg:flex-1" : ""}`}>
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-extrabold tracking-wide text-emerald-700">
-                        {item.item_code ?? "MÃ ĐỒ"}
-                      </span>
-
-                      <span
-                        className={
-                          available
-                            ? "rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-green-700"
-                            : "rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500"
-                        }
-                      >
-                        {available
-                          ? "Có thể đăng ký"
-                          : remaining <= 0
-                            ? "Đã hết"
-                            : "Không khả dụng"}
-                      </span>
-                    </div>
-
-                    <h2 className="text-2xl font-extrabold leading-snug text-slate-900">
-                      {item.name}
-                    </h2>
-
-                    {item.category && (
-                      <p className="mt-3 text-lg text-slate-500">
-                        {item.category}
-                      </p>
-                    )}
-
                     <div
-                      className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-bold ${
-                        remaining > 0
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-700"
+                      className={`flex h-64 items-center justify-center bg-slate-100 ${
+                        viewMode === "1" ? "lg:h-auto lg:w-2/5 lg:shrink-0" : ""
                       }`}
                     >
-                      Còn lại {remaining} / {Number(item.quantity ?? 1)}
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <span className="text-lg text-slate-400">
+                          Không có ảnh
+                        </span>
+                      )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDetail(item)}
-                      className="mt-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-base font-extrabold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
+                    <div
+                      className={`p-6 ${viewMode === "1" ? "lg:flex-1" : ""}`}
                     >
-                      Xem chi tiết
-                    </button>
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-extrabold tracking-wide text-emerald-700">
+                          {item.item_code ?? "MÃ ĐỒ"}
+                        </span>
+
+                        <span
+                          className={
+                            available
+                              ? "rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-green-700"
+                              : "rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500"
+                          }
+                        >
+                          {available
+                            ? "Có thể đăng ký"
+                            : remaining <= 0
+                              ? "Đã hết"
+                              : "Không khả dụng"}
+                        </span>
+                      </div>
+
+                      <h2 className="text-2xl font-extrabold leading-snug text-slate-900">
+                        {item.name}
+                      </h2>
+
+                      {item.category && (
+                        <p className="mt-3 text-lg text-slate-500">
+                          {item.category}
+                        </p>
+                      )}
+
+                      <div
+                        className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-bold ${
+                          remaining > 0
+                            ? "bg-green-50 text-green-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
+                        Còn lại {remaining} / {Number(item.quantity ?? 1)}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDetail(item)}
+                        className="mt-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-base font-extrabold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
+                      >
+                        Xem chi tiết
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <p className="text-sm font-medium text-slate-500">
+                Đang hiển thị {visibleItems.length} / {filteredItems.length} sản
+                phẩm
+              </p>
+              {hasMoreItems && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) => current + ITEMS_PER_PAGE)
+                  }
+                  className="rounded-2xl bg-emerald-600 px-7 py-3.5 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-emerald-200"
+                >
+                  Xem thêm{" "}
+                  {Math.min(
+                    ITEMS_PER_PAGE,
+                    filteredItems.length - visibleItems.length,
+                  )}{" "}
+                  sản phẩm
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 
