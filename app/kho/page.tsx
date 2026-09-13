@@ -463,7 +463,7 @@ export default function KhoPage() {
   return (
     <main className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}>
       <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-xl text-white shadow-sm">S</span>
             <span>
@@ -471,19 +471,16 @@ export default function KhoPage() {
               <span className="block text-xs font-medium text-slate-500">Trao đi · Nhận lại · Kết nối</span>
             </span>
           </a>
-          <a href="/theo-doi" className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 sm:inline-flex">
-            Theo dõi đăng ký
-          </a>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/70 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-2xl border border-amber-200/70 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="font-extrabold text-slate-900">Đã đăng ký nhận đồ?</p>
             <p className="mt-1 text-sm text-slate-600">Nhập họ tên và số điện thoại để xem tình trạng phiếu đăng ký.</p>
           </div>
-          <a href="/theo-doi" className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700 sm:hidden">
+          <a href="/theo-doi" className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md">
             Theo dõi đăng ký →
           </a>
         </div>
