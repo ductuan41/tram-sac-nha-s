@@ -185,12 +185,17 @@ export default function AdminPage() {
   const filteredInventory = useMemo(() => {
     const keyword = inventorySearch.trim().toLowerCase();
     return (dashboard?.inventory || []).filter((item) => {
-      if (
-        inventoryStatusFilter !== "ALL" &&
-        (item.status || "AVAILABLE") !== inventoryStatusFilter
-      ) {
+      if (inventoryStatusFilter === "IN_STOCK" && item.remaining_quantity <= 0)
         return false;
-      }
+      if (
+        inventoryStatusFilter === "OUT_OF_STOCK" &&
+        item.remaining_quantity > 0
+      )
+        return false;
+      if (inventoryStatusFilter === "HAS_REQUESTS" && item.active_count <= 0)
+        return false;
+      if (inventoryStatusFilter === "NO_REQUESTS" && item.active_count > 0)
+        return false;
       if (!keyword) return true;
       return [
         item.item_code,
@@ -297,7 +302,7 @@ export default function AdminPage() {
               </p>
               <p className="mt-3 text-xs font-semibold text-slate-400">
                 {lastUpdated
-                  ? `Đồng bộ gần nhất: ${lastUpdated.toLocaleTimeString("vi-VN")}`
+                  ? `Đồng bộ gần nhất: ${lastUpdated.toLocaleDateString("vi-VN")} · ${lastUpdated.toLocaleTimeString("vi-VN")}`
                   : "Đang đồng bộ dữ liệu..."}
               </p>
             </div>
@@ -518,27 +523,28 @@ export default function AdminPage() {
                 onChange={(e) => setInventoryStatusFilter(e.target.value)}
                 className="rounded-xl border border-slate-300 px-4 py-3"
               >
-                <option value="ALL">Tất cả trạng thái</option>
-                <option value="AVAILABLE">🟢 Còn hàng</option>
-                <option value="PENDING">🟡 Chờ xử lý</option>
-                <option value="HELD">🟠 Đang giữ</option>
-                <option value="TRANSFERRED">⚫ Đã chuyển</option>
+                <option value="ALL">Tất cả vật phẩm</option>
+                <option value="IN_STOCK">🟢 Còn hàng</option>
+                <option value="OUT_OF_STOCK">🔴 Hết hàng</option>
+                <option value="HAS_REQUESTS">🟠 Có phiếu đăng ký</option>
+                <option value="NO_REQUESTS">⚪ Chưa có phiếu đăng ký</option>
               </select>
             </div>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredInventory.map((item) => {
-                const status = item.status || "AVAILABLE";
                 const statusText =
-                  status === "AVAILABLE"
-                    ? "Còn hàng"
-                    : status === "PENDING"
-                      ? "Chờ xử lý"
-                      : status === "HELD"
-                        ? "Đang giữ"
-                        : status === "TRANSFERRED"
-                          ? "Đã chuyển"
-                          : status;
+                  item.remaining_quantity <= 0
+                    ? "Hết hàng"
+                    : item.active_count > 0
+                      ? "Có phiếu đăng ký"
+                      : "Còn hàng";
+                const inventoryBadgeClass =
+                  item.remaining_quantity <= 0
+                    ? "bg-rose-50 text-rose-700 ring-rose-200"
+                    : item.active_count > 0
+                      ? "bg-amber-50 text-amber-700 ring-amber-200"
+                      : "bg-emerald-50 text-emerald-700 ring-emerald-200";
 
                 return (
                   <article
@@ -569,7 +575,9 @@ export default function AdminPage() {
                             {item.name || "Không rõ tên"}
                           </h3>
                         </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${inventoryBadgeClass}`}
+                        >
                           {statusText}
                         </span>
                       </div>
