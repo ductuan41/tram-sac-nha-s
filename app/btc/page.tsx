@@ -1054,7 +1054,7 @@ ${errorMessage}`);
       console.error("Delete item error:", err);
       setError(
         err?.message ||
-          "Không thể xóa sản phẩm. Nếu sản phẩm đã có phiếu nhận, hãy giữ lại sản phẩm thay vì xóa.",
+          "Không thể xóa sản phẩm vì sản phẩm đã có phiếu nhận. Bạn có thể chỉnh sửa hoặc ẩn sản phẩm thay vì xóa.",
       );
     } finally {
       setProcessingId(null);
@@ -1085,7 +1085,7 @@ ${errorMessage}`);
 
       setMessage(
         request.status === "PENDING"
-          ? "Đã duyệt phiếu thành công."
+          ? "Đã xác nhận phiếu thành công."
           : "Đã xác nhận giao đồ thành công!",
       );
       await loadData();
@@ -1236,7 +1236,7 @@ ${errorMessage}`);
               dot: "bg-amber-400",
             },
             {
-              label: "Đã duyệt",
+              label: "Đã xác nhận",
               value: approvedCount,
               tone: "text-emerald-600",
               dot: "bg-emerald-500",
@@ -1336,8 +1336,8 @@ ${errorMessage}`);
                     onChange={(e) => setRequestStatusFilter(e.target.value)}
                     className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-emerald-500"
                   >
-                    <option value="PENDING">Chờ giao</option>
-                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                    <option value="APPROVED">Đã xác nhận</option>
                     <option value="DELIVERED">Đã giao</option>
                     <option value="CANCELLED">Đã hủy</option>
                     <option value="ALL">Tất cả</option>
@@ -1524,8 +1524,8 @@ ${errorMessage}`);
                             : request.status === "CANCELLED"
                               ? "Đã hủy"
                               : request.status === "APPROVED"
-                                ? "Đã duyệt"
-                                : "Chờ giao"}
+                                ? "Đã xác nhận"
+                                : "Chờ duyệt"}
                         </span>
                       </div>
 
@@ -1646,7 +1646,7 @@ ${errorMessage}`);
                           </p>
                           {request.approved_by_name && (
                             <p className="text-sm text-slate-600 mt-2">
-                              ✅ Duyệt phiếu:{" "}
+                              ✅ Xác nhận phiếu:{" "}
                               <span className="font-semibold">
                                 {request.approved_by_name}
                               </span>
@@ -1709,7 +1709,7 @@ ${errorMessage}`);
                             {isProcessing
                               ? "Đang xử lý..."
                               : request.status === "PENDING"
-                                ? "Duyệt phiếu"
+                                ? "Xác nhận phiếu"
                                 : "Xác nhận đã giao đồ"}
                           </button>
 
@@ -1791,7 +1791,7 @@ ${errorMessage}`);
                 }
 
                 if (item.status === "HELD") {
-                  statusText = "Đang giữ";
+                  statusText = "Có phiếu đăng ký";
                   statusClass = "bg-amber-50 text-amber-700";
                 }
 
