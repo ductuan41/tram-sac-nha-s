@@ -497,7 +497,7 @@ export default function KhoPage() {
       className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] text-slate-800`}
     >
       <div className="border-b border-emerald-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-600 text-xl text-white shadow-sm">
               S
@@ -510,6 +510,15 @@ export default function KhoPage() {
                 Trao đi · Nhận lại · Kết nối
               </span>
             </span>
+          </a>
+
+          <a
+            href="mailto:lienhe@tramsacnhas.io.vn?subject=H%E1%BB%97%20tr%E1%BB%A3%20t%E1%BB%AB%20Tr%E1%BA%A1m%20s%E1%BA%A1c%20nh%C3%A0%20S"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-bold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 sm:px-5"
+            aria-label="Gửi email liên hệ Ban tổ chức"
+          >
+            <span aria-hidden="true">✉️</span>
+            <span className="hidden sm:inline">Liên hệ BTC</span>
           </a>
         </div>
       </div>
@@ -879,6 +888,38 @@ export default function KhoPage() {
             </div>
           </>
         )}
+
+        <section className="mt-10 overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+            <div className="flex items-start gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-2xl">
+                📩
+              </span>
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900">
+                  Bạn cần BTC hỗ trợ?
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Nếu gặp vấn đề khi đăng ký, theo dõi phiếu hoặc nhận đồ, hãy
+                  gửi email cho BTC Trạm sạc nhà S.
+                </p>
+                <a
+                  href="mailto:lienhe@tramsacnhas.io.vn"
+                  className="mt-2 inline-block break-all text-sm font-bold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 sm:text-base"
+                >
+                  lienhe@tramsacnhas.io.vn
+                </a>
+              </div>
+            </div>
+
+            <a
+              href="mailto:lienhe@tramsacnhas.io.vn?subject=Y%C3%AAu%20c%E1%BA%A7u%20h%E1%BB%97%20tr%E1%BB%A3%20-%20Tr%E1%BA%A1m%20s%E1%BA%A1c%20nh%C3%A0%20S"
+              className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-emerald-600 px-6 py-3.5 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md"
+            >
+              Gửi email cho BTC
+            </a>
+          </div>
+        </section>
       </div>
 
       {selectedDetail && (
