@@ -51,6 +51,7 @@ type Request = {
   pickup_date: string | null;
   created_at: string | null;
   student_name: string | null;
+  email: string | null;
   phone: string | null;
   pickup_location: string | null;
   full_name: string | null;
@@ -66,6 +67,8 @@ type Request = {
   cancelled_by: string | null;
   cancelled_at: string | null;
   cancelled_by_name: string | null;
+  confirmation_email_sent_at: string | null;
+  confirmation_email_error: string | null;
 };
 
 function formatTimeForInput(value: string | null | undefined) {
@@ -411,6 +414,7 @@ export default function BtcPage() {
           pickup_date,
           created_at,
           student_name,
+          email,
           phone,
           pickup_location,
           full_name,
@@ -425,7 +429,9 @@ export default function BtcPage() {
           delivered_by_name,
           cancelled_by,
           cancelled_at,
-          cancelled_by_name
+          cancelled_by_name,
+          confirmation_email_sent_at,
+          confirmation_email_error
         `,
         )
         .order("created_at", {
@@ -1094,6 +1100,44 @@ ${errorMessage}`);
     setProcessingId(request.id);
 
     try {
+      if (request.status === "PENDING") {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error("Phiên đăng nhập đã hết hạn.");
+
+        const response = await fetch("/api/btc/confirm-request", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ requestId: request.id }),
+        });
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(result?.error || "Không thể xác nhận phiếu.");
+        }
+
+        setMessage(
+          result?.emailSent
+            ? "Đã xác nhận phiếu và gửi email cho người nhận."
+            : "Đã xác nhận phiếu thành công.",
+        );
+
+        if (result?.warning) {
+          setError(result.warning);
+        }
+
+        await loadData();
+        return;
+      }
+
       const { error: rpcError } = await supabase.rpc(
         "process_pickup_request_by_btc",
         { p_request_id: request.id },
@@ -1101,15 +1145,57 @@ ${errorMessage}`);
 
       if (rpcError) throw rpcError;
 
-      setMessage(
-        request.status === "PENDING"
-          ? "Đã xác nhận phiếu thành công."
-          : "Đã xác nhận giao đồ thành công!",
-      );
+      setMessage("Đã xác nhận giao đồ thành công!");
       await loadData();
     } catch (err: any) {
       console.error("Process request error:", err);
       setError(err?.message || "Không thể xử lý phiếu.");
+    } finally {
+      setProcessingId(null);
+    }
+  }
+
+  async function resendConfirmationEmail(request: Request) {
+    setMessage("");
+    setError("");
+
+    if (!(await ensureBtcPermission())) return;
+
+    setProcessingId(request.id);
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error("Phiên đăng nhập đã hết hạn.");
+
+      const response = await fetch("/api/btc/confirm-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ requestId: request.id, resend: true }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Không thể gửi lại email.");
+      }
+
+      if (!result?.emailSent) {
+        throw new Error(result?.warning || "Không thể gửi lại email.");
+      }
+
+      setMessage("Đã gửi lại email xác nhận cho người nhận.");
+      await loadData();
+    } catch (err: any) {
+      console.error("Resend confirmation email error:", err);
+      setError(err?.message || "Không thể gửi lại email.");
     } finally {
       setProcessingId(null);
     }
@@ -1576,6 +1662,20 @@ ${errorMessage}`);
                           {request.phone || "Chưa có"}
                         </p>
 
+                        <p className="text-slate-700 mt-2 break-all">
+                          <span className="font-semibold">Email:</span>{" "}
+                          {request.email || "Chưa có"}
+                        </p>
+
+                        {request.confirmation_email_sent_at && (
+                          <p className="mt-3 text-sm font-semibold text-emerald-700">
+                            Email xác nhận đã gửi lúc{" "}
+                            {new Date(
+                              request.confirmation_email_sent_at,
+                            ).toLocaleString("vi-VN")}
+                          </p>
+                        )}
+
                         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
                           <p className="font-bold text-slate-900">
                             Hình thức nhận đồ
@@ -1716,18 +1816,39 @@ ${errorMessage}`);
                       {(request.status === "PENDING" ||
                         request.status === "APPROVED") && (
                         <>
+                          {request.status === "APPROVED" &&
+                            !request.confirmation_email_sent_at && (
+                              <button
+                                type="button"
+                                disabled={isProcessing || !request.email}
+                                onClick={() => resendConfirmationEmail(request)}
+                                className="mt-6 w-full rounded-xl border border-emerald-200 bg-emerald-50 py-3.5 font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isProcessing
+                                  ? "Đang gửi email..."
+                                  : request.email
+                                    ? "Gửi lại email xác nhận"
+                                    : "Phiếu cũ chưa có email"}
+                              </button>
+                            )}
+
                           {/* XÁC NHẬN */}
 
                           <button
                             type="button"
                             disabled={isProcessing}
                             onClick={() => processRequest(request)}
-                            className="mt-6 w-full rounded-xl bg-emerald-600 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                            className={`${
+                              request.status === "APPROVED" &&
+                              !request.confirmation_email_sent_at
+                                ? "mt-3"
+                                : "mt-6"
+                            } w-full rounded-xl bg-emerald-600 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                           >
                             {isProcessing
                               ? "Đang xử lý..."
                               : request.status === "PENDING"
-                                ? "Xác nhận phiếu"
+                                ? "Xác nhận phiếu và gửi email"
                                 : "Xác nhận đã giao đồ"}
                           </button>
 
