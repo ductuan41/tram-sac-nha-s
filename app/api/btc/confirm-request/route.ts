@@ -100,13 +100,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: profile, error: profileError } = await adminClient
+  const { data: profile, error: profileError } = await userClient
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (profileError || profile?.role !== "btc") {
+  const normalizedRole = String(profile?.role ?? "")
+  .trim()
+  .toLowerCase();
+
+if (
+  profileError ||
+  !["btc", "admin"].includes(normalizedRole)
+) {
     return NextResponse.json(
       { error: "Tài khoản này không có quyền xác nhận phiếu." },
       { status: 403 },
