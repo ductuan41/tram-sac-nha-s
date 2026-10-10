@@ -336,7 +336,6 @@ console.log("[BTC CONFIRM] Found:", Boolean(beforeRequest));
                 Nếu không thể đến đúng lịch, hãy phản hồi email này hoặc liên hệ <a href="mailto:${escapeHtml(smtpUser)}" style="color:#047857">${escapeHtml(smtpUser)}</a>.
               </p>
               <p style="margin:18px 0 0;font-size:14px;font-weight:700;color:#0f172a">BTC Trạm sạc nhà S</p>
-              <p style="margin:4px 0 0;font-size:13px;color:#64748b">Trao đi · Nhận lại · Kết nối</p>
               
 <p style="margin:12px 0 0;font-size:14px;color:#64748b">
   Email:
