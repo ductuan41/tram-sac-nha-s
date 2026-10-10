@@ -1126,7 +1126,7 @@ ${errorMessage}`);
 
         setMessage(
           result?.emailSent
-            ? "Đã xác nhận phiếu và gửi email cho người nhận."
+            ? "Đã xác nhận phiếu và chuyển email cho OxMail (chưa xác nhận đã phát thư)."
             : "Đã xác nhận phiếu thành công.",
         );
 
@@ -1191,7 +1191,7 @@ ${errorMessage}`);
         throw new Error(result?.warning || "Không thể gửi lại email.");
       }
 
-      setMessage("Đã gửi lại email xác nhận cho người nhận.");
+      setMessage("Đã chuyển lại email cho OxMail (chưa xác nhận đã phát thư).");
       await loadData();
     } catch (err: any) {
       console.error("Resend confirmation email error:", err);
@@ -1667,13 +1667,41 @@ ${errorMessage}`);
                           {request.email || "Chưa có"}
                         </p>
 
-                        {request.confirmation_email_sent_at && (
-                          <p className="mt-3 text-sm font-semibold text-emerald-700">
-                            Email xác nhận đã gửi lúc{" "}
-                            {new Date(
-                              request.confirmation_email_sent_at,
-                            ).toLocaleString("vi-VN")}
-                          </p>
+                        {(request.status === "APPROVED" ||
+                          request.status === "DELIVERED") && (
+                          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                            <p className="font-bold text-slate-800">
+                              Trạng thái email xác nhận
+                            </p>
+                            {request.confirmation_email_sent_at ? (
+                              <>
+                                <p className="mt-1 font-semibold text-blue-700">
+                                  Đã chuyển email cho OxMail lúc{" "}
+                                  {new Date(
+                                    request.confirmation_email_sent_at,
+                                  ).toLocaleString("vi-VN")}
+                                </p>
+                                <p className="mt-1 text-slate-600">
+                                  Chưa xác minh email đã được phát đến máy chủ người nhận.
+                                  Kiểm tra mục Vết gửi trên OxMail để biết thư đang chờ,
+                                  đã phát hay thất bại. Không gửi lại khi thư còn trong hàng đợi.
+                                </p>
+                              </>
+                            ) : request.confirmation_email_error ? (
+                              <>
+                                <p className="mt-1 font-semibold text-red-700">
+                                  Chưa chuyển email thành công cho OxMail
+                                </p>
+                                <p className="mt-1 break-words text-red-700">
+                                  {request.confirmation_email_error}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-1 font-semibold text-amber-700">
+                                Chưa ghi nhận email được OxMail tiếp nhận.
+                              </p>
+                            )}
+                          </div>
                         )}
 
                         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
