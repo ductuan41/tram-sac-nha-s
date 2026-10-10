@@ -63,6 +63,8 @@ export async function POST(request: Request) {
   }
 
   const requestId = body.requestId?.trim();
+  console.log("[BTC CONFIRM] Request ID:", requestId);
+console.log("[BTC CONFIRM] Supabase URL:", supabaseUrl);
   const resend = body.resend === true;
 
   if (!requestId) {
@@ -120,12 +122,34 @@ if (
     );
   }
 
-  const { data: beforeRequest, error: beforeError } = await adminClient
-    .from("requests")
-    .select("id, status, confirmation_email_sent_at")
-    .eq("id", requestId)
-    .single();
+  console.log("[BTC] Confirm request:", {
+  requestId,
+  supabaseUrl,
+});
 
+const { data: beforeRequest, error: beforeError } = await adminClient
+  .from("requests")
+  .select("id, status, confirmation_email_sent_at")
+  .eq("id", requestId)
+  .maybeSingle();
+
+console.log("[BTC] Lookup result:", {
+  found: Boolean(beforeRequest),
+  errorCode: beforeError?.code,
+  errorMessage: beforeError?.message,
+});
+
+if (beforeError) {
+  return NextResponse.json(
+    { error: "Không thể truy vấn phiếu. Kiểm tra nhật ký máy chủ." },
+    { status: 500 }
+  );
+}
+console.log("[BTC CONFIRM] Query error:", {
+  code: beforeError?.code,
+  message: beforeError?.message,
+});
+console.log("[BTC CONFIRM] Found:", Boolean(beforeRequest));
   if (beforeError || !beforeRequest) {
     return NextResponse.json({ error: "Không tìm thấy phiếu." }, { status: 404 });
   }
