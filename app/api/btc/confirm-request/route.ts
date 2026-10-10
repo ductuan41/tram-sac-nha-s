@@ -134,12 +134,15 @@ const { data: beforeRequest, error: beforeError } = await adminClient
   .maybeSingle();
 
 
-console.log("[BTC] Lookup result:", {
-  found: Boolean(beforeRequest),
-  error: beforeError
-    ? String(beforeError)
-    : null,
-});
+
+console.log(
+  "[BTC] Lookup result:",
+  JSON.stringify({
+    found: Boolean(beforeRequest),
+    error: beforeError,
+  })
+);
+
 
 
 if (beforeError) {
