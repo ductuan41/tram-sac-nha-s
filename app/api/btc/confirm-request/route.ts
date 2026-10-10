@@ -304,7 +304,7 @@ console.log("[BTC CONFIRM] Found:", Boolean(beforeRequest));
         `"Trạm sạc nhà S" <${smtpUser}>`,
       to: recipientEmail,
       replyTo: smtpUser,
-      subject: `✅ [Trạm sạc nhà S] Phiếu ${requestId.slice(0, 8).toUpperCase()} đã được xác nhận`,
+      subject: `[Trạm sạc nhà S] Phiếu ${requestId.slice(0, 8).toUpperCase()} đã được xác nhận`,
       text: isShipping
         ? `Chào ${fullName}, BTC đã xác nhận phiếu nhận ${itemName} (${itemCode}). Hình thức: giao hàng. Địa chỉ: ${pickupRequest.shipping_address || "Chưa cập nhật"}. Theo dõi tại ${siteUrl}/theo-doi`
         : `Chào ${fullName}, BTC đã xác nhận phiếu nhận ${itemName} (${itemCode}). Ngày nhận: ${pickupDate}. Thời gian: ${pickupTime}. Địa điểm: ${pickupLocation}. Theo dõi tại ${siteUrl}/theo-doi`,
@@ -337,6 +337,31 @@ console.log("[BTC CONFIRM] Found:", Boolean(beforeRequest));
               </p>
               <p style="margin:18px 0 0;font-size:14px;font-weight:700;color:#0f172a">BTC Trạm sạc nhà S</p>
               <p style="margin:4px 0 0;font-size:13px;color:#64748b">Trao đi · Nhận lại · Kết nối</p>
+              
+<p style="margin:12px 0 0;font-size:14px;color:#64748b">
+  Email:
+  <a href="mailto:lienhe@tramsacnhas.io.vn"
+     style="color:#059669;text-decoration:none">
+    lienhe@tramsacnhas.io.vn
+  </a>
+</p>
+
+<p style="margin:6px 0 0;font-size:14px;color:#64748b">
+  Website:
+  <a href="https://tramsacnhas.io.vn"
+     style="color:#059669;text-decoration:none">
+    tramsacnhas.io.vn
+  </a>
+</p>
+
+<p style="margin:6px 0 0;font-size:14px;color:#64748b">
+  SĐT:
+  <a href="tel:+84984904731"
+     style="color:#059669;text-decoration:none">
+    0984 904 731
+  </a>
+</p>
+
             </div>
           </div>
         </div>
