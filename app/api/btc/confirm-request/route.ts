@@ -133,11 +133,14 @@ const { data: beforeRequest, error: beforeError } = await adminClient
   .eq("id", requestId)
   .maybeSingle();
 
+
 console.log("[BTC] Lookup result:", {
   found: Boolean(beforeRequest),
-  errorCode: beforeError?.code,
-  errorMessage: beforeError?.message,
+  error: beforeError
+    ? String(beforeError)
+    : null,
 });
+
 
 if (beforeError) {
   return NextResponse.json(
@@ -145,10 +148,6 @@ if (beforeError) {
     { status: 500 }
   );
 }
-console.log("[BTC CONFIRM] Query error:", {
-  code: beforeError?.code,
-  message: beforeError?.message,
-});
 console.log("[BTC CONFIRM] Found:", Boolean(beforeRequest));
   if (beforeError || !beforeRequest) {
     return NextResponse.json({ error: "Không tìm thấy phiếu." }, { status: 404 });
