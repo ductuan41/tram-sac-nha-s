@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { downloadExcel, type ExcelSheet } from "@/lib/exportExcel";
 import { Be_Vietnam_Pro } from "next/font/google";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -237,6 +238,78 @@ export default function BtcPage() {
 
     return true;
   });
+
+  const [exporting, setExporting] = useState(false);
+
+  async function exportBtcExcel(onlyFiltered: boolean) {
+    if (exporting) return;
+    setExporting(true);
+    setError("");
+    try {
+      if (!(await ensureBtcPermission())) return;
+      const chosen = onlyFiltered ? filteredRequests : requests;
+      const sheets: ExcelSheet[] = [
+        {
+          name: "Phiếu nhận đồ",
+          columns: [
+            { header: "Mã phiếu", key: "id", width: 39 },
+            { header: "Mã đồ", key: "itemCode", width: 17 },
+            { header: "Vật phẩm", key: "itemName", width: 35 },
+            { header: "Người nhận", key: "name", width: 28 },
+            { header: "SĐT", key: "phone", width: 19 },
+            { header: "Email", key: "email", width: 35 },
+            { header: "Trạng thái phiếu", key: "status", width: 22 },
+            { header: "Hình thức nhận", key: "method", width: 20 },
+            { header: "Địa điểm nhận", key: "location", width: 38 },
+            { header: "Ngày nhận", key: "pickupDate", width: 18 },
+            { header: "Khung giờ", key: "pickupTime", width: 23 },
+            { header: "Địa chỉ ship", key: "shippingAddress", width: 48 },
+            { header: "Ngày đăng ký", key: "createdAt", width: 23 },
+            { header: "BTC xác nhận", key: "approvedBy", width: 25 },
+            { header: "Lúc xác nhận", key: "approvedAt", width: 23 },
+            { header: "Trạng thái email SMTP", key: "emailStatus", width: 38 },
+            { header: "OxMail nhận lúc", key: "emailAt", width: 23 },
+            { header: "Lỗi gửi", key: "emailError", width: 48 },
+          ],
+          rows: chosen.map((r) => ({
+            id: r.id,
+            itemCode: items.find((i) => i.id === r.item_id)?.item_code,
+            itemName: items.find((i) => i.id === r.item_id)?.name,
+            name: r.full_name || r.student_name,
+            phone: r.phone, email: r.email, status: r.status,
+            method: r.delivery_method === "SHIP" ? "Giao hàng" : "Lấy trực tiếp",
+            location: getRequestLocation(r), pickupDate: getRequestDate(r),
+            pickupTime: getRequestTimeRange(r), shippingAddress: r.shipping_address,
+            createdAt: r.created_at ? new Date(r.created_at).toLocaleString("vi-VN") : "",
+            approvedBy: r.approved_by_name,
+            approvedAt: r.approved_at ? new Date(r.approved_at).toLocaleString("vi-VN") : "",
+            emailStatus: r.confirmation_email_sent_at ? "OxMail đã tiếp nhận (chưa xác minh phát thư)" : r.confirmation_email_error ? "SMTP thất bại" : "Chưa ghi nhận gửi",
+            emailAt: r.confirmation_email_sent_at ? new Date(r.confirmation_email_sent_at).toLocaleString("vi-VN") : "",
+            emailError: r.confirmation_email_error,
+          })),
+        },
+        {
+          name: "Kho vật phẩm",
+          columns: [
+            { header: "Mã đồ", key: "code", width: 18 },
+            { header: "Tên vật phẩm", key: "name", width: 35 },
+            { header: "Danh mục", key: "category", width: 22 },
+            { header: "Tình trạng", key: "condition", width: 23 },
+            { header: "Tổng", key: "quantity", width: 13 },
+            { header: "Đã đăng ký", key: "registered", width: 18 },
+            { header: "Còn lại", key: "remaining", width: 15 },
+          ],
+          rows: items.map(i => ({ code: i.item_code, name: i.name, category: i.category,
+            condition: i.condition, quantity: i.quantity,
+            registered: getItemRequestCount(i.id), remaining: getItemRemaining(i) })),
+        },
+      ];
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadExcel(`TramSacNhaS_BTC_${onlyFiltered ? "TheoLoc" : "TatCa"}_${date}.xlsx`, sheets);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể xuất Excel.");
+    } finally { setExporting(false); }
+  }
 
   function clearRequestFilters() {
     setRequestStatusFilter("PENDING");
@@ -1577,6 +1650,16 @@ ${errorMessage}`);
                   / {requests.length} phiếu
                 </p>
 
+                <button type="button" onClick={() => void exportBtcExcel(true)}
+                  disabled={exporting}
+                  className="rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                  {exporting ? "Đang xuất..." : "↓ Excel theo bộ lọc"}
+                </button>
+                <button type="button" onClick={() => void exportBtcExcel(false)}
+                  disabled={exporting}
+                  className="rounded-xl border border-emerald-300 bg-white px-5 py-2.5 font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
+                  ↓ Excel tất cả
+                </button>
                 <button
                   type="button"
                   onClick={clearRequestFilters}

@@ -1,15 +1,13 @@
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { downloadExcel, type ExcelSheet } from "@/lib/exportExcel";
 import { Be_Vietnam_Pro } from "next/font/google";
-
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["vietnamese"],
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
-
 type Stats = {
   total_requests: number;
   pending_requests: number;
@@ -20,7 +18,6 @@ type Stats = {
   available_items: number;
   total_btc: number;
 };
-
 type BtcAccount = {
   id: string;
   full_name: string | null;
@@ -31,7 +28,6 @@ type BtcAccount = {
   delivered_count: number;
   cancelled_count: number;
 };
-
 type AdminRequest = {
   id: string;
   item_id: string | null;
@@ -53,7 +49,6 @@ type AdminRequest = {
   cancelled_by_name: string | null;
   cancelled_at: string | null;
 };
-
 type InventoryItem = {
   id: string;
   item_code: string | null;
@@ -67,19 +62,16 @@ type InventoryItem = {
   active_count: number;
   remaining_quantity: number;
 };
-
 type Dashboard = {
   stats: Stats;
   btc_accounts: BtcAccount[];
   requests: AdminRequest[];
   inventory: InventoryItem[];
 };
-
 function formatDateTime(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("vi-VN");
 }
-
 function statusLabel(status: string) {
   if (status === "PENDING") return "Chờ duyệt";
   if (status === "APPROVED") return "Đã xác nhận";
@@ -87,7 +79,6 @@ function statusLabel(status: string) {
   if (status === "CANCELLED") return "Đã hủy";
   return status;
 }
-
 function statusClass(status: string) {
   if (status === "PENDING") return "bg-amber-50 text-amber-700 ring-amber-200";
   if (status === "APPROVED")
@@ -96,7 +87,6 @@ function statusClass(status: string) {
   if (status === "CANCELLED") return "bg-rose-50 text-rose-700 ring-rose-200";
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
-
 export default function AdminPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,26 +101,21 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "requests" | "btc" | "inventory"
   >("overview");
-
   async function loadDashboard(showLoading = true) {
     if (showLoading) setLoading(true);
     setError("");
-
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
       if (!user) {
         window.location.replace("/dang-nhap");
         return;
       }
-
       const { data, error: rpcError } = await supabase.rpc(
         "get_admin_dashboard",
       );
       if (rpcError) throw rpcError;
-
       setDashboard(data as Dashboard);
       setLastUpdated(new Date());
     } catch (err: any) {
@@ -140,21 +125,16 @@ export default function AdminPage() {
       if (showLoading) setLoading(false);
     }
   }
-
   useEffect(() => {
     void loadDashboard();
-
     const timer = window.setInterval(() => {
       void loadDashboard(false);
     }, 5000);
-
     return () => window.clearInterval(timer);
   }, []);
-
   const filteredRequests = useMemo(() => {
     const requests = dashboard?.requests || [];
     const keyword = search.trim().toLowerCase();
-
     return requests.filter((request) => {
       if (statusFilter !== "ALL" && request.status !== statusFilter)
         return false;
@@ -164,9 +144,7 @@ export default function AdminPage() {
       ) {
         return false;
       }
-
       if (!keyword) return true;
-
       return [
         request.full_name,
         request.phone,
@@ -181,7 +159,6 @@ export default function AdminPage() {
         .some((value) => String(value).toLowerCase().includes(keyword));
     });
   }, [dashboard, search, statusFilter, deliveryFilter]);
-
   const filteredInventory = useMemo(() => {
     const keyword = inventorySearch.trim().toLowerCase();
     return (dashboard?.inventory || []).filter((item) => {
@@ -208,13 +185,99 @@ export default function AdminPage() {
         .some((value) => String(value).toLowerCase().includes(keyword));
     });
   }, [dashboard, inventorySearch, inventoryStatusFilter]);
+   const [exporting, setExporting] = useState(false);
 
-  async function resetTestData() {
+  async function exportAdminExcel(filtered: boolean) {
+    if (!dashboard || exporting) return;
+    setExporting(true);
+    setError("");
+    try {
+      // Reload through the Admin-only RPC to avoid exporting stale data.
+      const { data, error: rpcError } = await supabase.rpc("get_admin_dashboard");
+      if (rpcError) throw rpcError;
+      const source = data as Dashboard;
+      const ids = new Set(filteredRequests.map(r => r.id));
+      const itemIds = new Set(filteredInventory.map(i => i.id));
+      const selectedRequests = filtered ? source.requests.filter(r => ids.has(r.id)) : source.requests;
+      const selectedInventory = filtered ? source.inventory.filter(i => itemIds.has(i.id)) : source.inventory;
+      const sheets: ExcelSheet[] = [
+        {
+          name: "Phiếu nhận đồ",
+          columns: [
+            { header: "Mã phiếu", key: "id", width: 39 },
+            { header: "Mã đồ", key: "code", width: 18 },
+            { header: "Tên vật phẩm", key: "item", width: 35 },
+            { header: "Người nhận", key: "name", width: 28 },
+            { header: "SĐT", key: "phone", width: 19 },
+            { header: "Trạng thái", key: "status", width: 19 },
+            { header: "Hình thức nhận", key: "method", width: 20 },
+            { header: "Địa điểm", key: "location", width: 29 },
+            { header: "Ngày nhận", key: "pickupDate", width: 19 },
+            { header: "Địa chỉ giao", key: "shipping", width: 47 },
+            { header: "Ngày đăng ký", key: "created", width: 23 },
+            { header: "BTC duyệt", key: "approver", width: 25 },
+            { header: "Lúc duyệt", key: "approvedAt", width: 23 },
+            { header: "BTC giao", key: "deliverer", width: 25 },
+            { header: "Lúc giao", key: "deliveredAt", width: 23 },
+            { header: "BTC hủy", key: "canceller", width: 25 },
+          ],
+          rows: selectedRequests.map(r => ({
+            id: r.id, code: r.item_code, item: r.item_name, name: r.full_name,
+            phone: r.phone, status: statusLabel(r.status),
+            method: r.delivery_method === "SHIP" ? "Giao hàng" : "Lấy trực tiếp",
+            location: r.pickup_location, pickupDate: r.pickup_date,
+            shipping: r.shipping_address, created: formatDateTime(r.created_at),
+            approver: r.approved_by_name, approvedAt: formatDateTime(r.approved_at),
+            deliverer: r.delivered_by_name, deliveredAt: formatDateTime(r.delivered_at),
+            canceller: r.cancelled_by_name,
+          })),
+        },
+        {
+          name: "Kho vật phẩm",
+          columns: [
+            { header: "Mã đồ", key: "code", width: 19 },
+            { header: "Tên đồ", key: "name", width: 35 },
+            { header: "Danh mục", key: "category", width: 24 },
+            { header: "Tình trạng", key: "condition", width: 20 },
+            { header: "Số lượng tổng", key: "quantity", width: 20 },
+            { header: "Số phiếu đang có", key: "active", width: 23 },
+            { header: "Còn lại", key: "remaining", width: 15 },
+          ],
+          rows: selectedInventory.map(i => ({code:i.item_code,name:i.name,category:i.category,
+            condition:i.condition,quantity:i.quantity,active:i.active_count,remaining:i.remaining_quantity})),
+        },
+        {
+          name: "Đội ngũ BTC",
+          columns: [
+            { header: "Họ tên", key: "name", width: 28 },
+            { header: "MSSV", key: "student", width: 19 },
+            { header: "Email", key: "email", width: 35 },
+            { header: "Vai trò", key: "role", width: 16 },
+            { header: "Đã duyệt", key: "approved", width: 15 },
+            { header: "Đã giao", key: "delivered", width: 15 },
+            { header: "Đã hủy", key: "cancelled", width: 15 },
+          ],
+          rows: source.btc_accounts.map(b => ({name:b.full_name,student:b.student_id,
+            email:b.email,role:b.role,approved:b.approved_count,delivered:b.delivered_count,cancelled:b.cancelled_count})),
+        },
+        {
+          name: "Thống kê",
+          columns: [{header:"Chỉ số",key:"metric",width:35},{header:"Giá trị",key:"value",width:20}],
+          rows: Object.entries(source.stats).map(([metric,value])=>({metric,value})),
+        },
+      ];
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadExcel(`TramSacNhaS_Admin_${filtered ? "TheoLoc" : "TatCa"}_${date}.xlsx`, sheets);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể xuất Excel.");
+    } finally { setExporting(false); }
+  }
+
+ async function resetTestData() {
     const first = window.confirm(
       "CẢNH BÁO: Thao tác này sẽ xóa toàn bộ dữ liệu vận hành/test như sản phẩm, phiếu đăng ký, lịch nhận và giao dịch. Tài khoản Admin/BTC sẽ KHÔNG bị xóa. Bạn có chắc chắn không?",
     );
     if (!first) return;
-
     const phrase = window.prompt(
       "Để xác nhận, hãy nhập chính xác: XOA DU LIEU TEST",
     );
@@ -222,7 +285,6 @@ export default function AdminPage() {
       window.alert("Đã hủy. Dữ liệu chưa bị xóa.");
       return;
     }
-
     setResetting(true);
     setError("");
     try {
@@ -239,12 +301,10 @@ export default function AdminPage() {
       setResetting(false);
     }
   }
-
   async function logout() {
     await supabase.auth.signOut();
     window.location.replace("/dang-nhap");
   }
-
   if (loading && !dashboard) {
     return (
       <main className="min-h-screen bg-slate-50 p-8">
@@ -254,7 +314,6 @@ export default function AdminPage() {
       </main>
     );
   }
-
   if (error && !dashboard) {
     return (
       <main className="min-h-screen bg-slate-50 p-8">
@@ -273,9 +332,7 @@ export default function AdminPage() {
       </main>
     );
   }
-
   const stats = dashboard?.stats;
-
   return (
     <main
       className={`${beVietnamPro.className} min-h-screen bg-[#f5f8f6] px-4 py-8 text-slate-800 sm:px-8`}
@@ -307,7 +364,17 @@ export default function AdminPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
+                            <button type="button" onClick={() => void exportAdminExcel(false)}
+                disabled={!dashboard || exporting}
+                className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                {exporting ? "Đang xuất..." : "↓ Xuất tất cả Excel"}
+              </button>
+              <button type="button" onClick={() => void exportAdminExcel(true)}
+                disabled={!dashboard || exporting}
+                className="rounded-xl border border-emerald-400/40 px-4 py-3 text-sm font-bold text-emerald-100 hover:bg-white/10 disabled:opacity-50">
+                ↓ Excel theo bộ lọc
+              </button>
+<button
                 onClick={resetTestData}
                 disabled={resetting}
                 className="rounded-xl border border-rose-300/25 bg-rose-400/10 px-4 py-3 text-sm font-bold text-rose-200 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-60"
@@ -323,13 +390,11 @@ export default function AdminPage() {
             </div>
           </div>
         </header>
-
         {error && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
           </div>
         )}
-
         <div className="sticky top-3 z-30 mb-7 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-sm backdrop-blur">
           {[
             ["overview", "Tổng quan"],
@@ -350,7 +415,6 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
-
         {activeTab === "overview" && (
           <>
             <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -389,7 +453,6 @@ export default function AdminPage() {
                 </div>
               ))}
             </section>
-
             <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -442,7 +505,6 @@ export default function AdminPage() {
             </section>
           </>
         )}
-
         {activeTab === "btc" && (
           <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div className="mb-6">
@@ -453,7 +515,6 @@ export default function AdminPage() {
                 Admin tổng xem được từng tài khoản và số thao tác đã thực hiện.
               </p>
             </div>
-
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {(dashboard?.btc_accounts || []).map((btc) => (
                 <div
@@ -476,7 +537,6 @@ export default function AdminPage() {
                       MSSV: {btc.student_id}
                     </p>
                   )}
-
                   <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl bg-blue-50 p-3">
                       <p className="text-2xl font-black text-emerald-700">
@@ -502,7 +562,6 @@ export default function AdminPage() {
             </div>
           </section>
         )}
-
         {activeTab === "inventory" && (
           <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -520,7 +579,6 @@ export default function AdminPage() {
                 sản phẩm
               </div>
             </div>
-
             <div className="grid gap-3 md:grid-cols-2">
               <input
                 value={inventorySearch}
@@ -540,7 +598,6 @@ export default function AdminPage() {
                 <option value="NO_REQUESTS">⚪ Chưa có phiếu đăng ký</option>
               </select>
             </div>
-
             <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredInventory.map((item) => {
                 const statusText =
@@ -555,7 +612,6 @@ export default function AdminPage() {
                     : item.active_count > 0
                       ? "bg-amber-50 text-amber-700 ring-amber-200"
                       : "bg-emerald-50 text-emerald-700 ring-emerald-200";
-
                 return (
                   <article
                     key={item.id}
@@ -574,7 +630,6 @@ export default function AdminPage() {
                         </div>
                       )}
                     </div>
-
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -591,7 +646,6 @@ export default function AdminPage() {
                           {statusText}
                         </span>
                       </div>
-
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <div className="rounded-xl bg-slate-50 p-3">
                           <p className="text-xs font-semibold text-slate-500">
@@ -610,7 +664,6 @@ export default function AdminPage() {
                           </p>
                         </div>
                       </div>
-
                       <div className="mt-4 space-y-1 text-sm text-slate-600">
                         {item.category && (
                           <p>
@@ -626,7 +679,6 @@ export default function AdminPage() {
                           <b>Đang có phiếu:</b> {item.active_count}
                         </p>
                       </div>
-
                       {item.description && (
                         <p className="mt-3 line-clamp-3 text-sm text-slate-500">
                           {item.description}
@@ -637,7 +689,6 @@ export default function AdminPage() {
                 );
               })}
             </div>
-
             {filteredInventory.length === 0 && (
               <div className="mt-5 rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
                 Không có sản phẩm phù hợp.
@@ -645,7 +696,6 @@ export default function AdminPage() {
             )}
           </section>
         )}
-
         {activeTab === "requests" && (
           <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div className="mb-6">
@@ -656,7 +706,6 @@ export default function AdminPage() {
                 Admin tổng xem toàn bộ phiếu, kể cả đã hủy và đã giao.
               </p>
             </div>
-
             <div className="grid gap-3 md:grid-cols-3">
               <input
                 value={search}
@@ -685,12 +734,10 @@ export default function AdminPage() {
                 <option value="SHIP">🚚 Ship hàng</option>
               </select>
             </div>
-
             <p className="mt-4 text-sm text-slate-500">
               Đang hiển thị <b>{filteredRequests.length}</b> /{" "}
               {dashboard?.requests.length || 0} phiếu
             </p>
-
             <div className="mt-5 space-y-4">
               {filteredRequests.map((request) => (
                 <article
@@ -716,7 +763,6 @@ export default function AdminPage() {
                       {statusLabel(request.status)}
                     </span>
                   </div>
-
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <div className="rounded-xl bg-slate-50 p-4">
                       <p className="font-bold text-slate-900">Hình thức nhận</p>
@@ -737,7 +783,6 @@ export default function AdminPage() {
                         </>
                       )}
                     </div>
-
                     <div className="rounded-xl bg-slate-50 p-4">
                       <p className="font-bold text-slate-900">
                         Lịch sử thao tác
@@ -767,7 +812,6 @@ export default function AdminPage() {
                   </div>
                 </article>
               ))}
-
               {filteredRequests.length === 0 && (
                 <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
                   Không có phiếu phù hợp bộ lọc.
